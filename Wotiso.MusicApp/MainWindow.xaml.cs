@@ -34,18 +34,36 @@ namespace Wotiso.MusicApp
         // Biến tạm để biết đang xem playlist nào
         private Playlist _currentViewingPlaylist = null; // null = xem Library
 
-        // DEBUG: Logger
+        // NEW: Biến lưu trữ danh sách gốc để filter
+        private List<Song> _allSongsInCurrentView = new(); // Tất cả bài hát trong view hiện tại (trước khi filter)
+        private List<Playlist> _allPlaylists = new(); // Tất cả playlist (trước khi filter)
+
+        // ==================== LOGGING CHO DEBUG ====================
+        /// <summary>
+        /// Ghi log để debug khi có lỗi màn hình đen hoặc crash
+        /// Log được ghi vào: D:\musicapp_debug.log
+        /// Dùng để trace từng bước thực thi và tìm nguyên nhân lỗi
+        /// </summary>
         private void LogDebug(string message)
         {
+            // Xuất log ra Debug Console của Visual Studio
             Debug.WriteLine($"[MainWindow] {DateTime.Now:HH:mm:ss.fff} - {message}");
             try
             {
+                // Ghi log vào file để xem lại sau (không bị mất khi đóng app)
                 File.AppendAllText("D:\\musicapp_debug.log", $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}\n");
             }
-            catch { }
+            catch { } // Bỏ qua lỗi ghi file để không làm crash app
         }
 
-        // SỬA: Constructor mới nhận 3 tham số
+        // ==================== CONSTRUCTOR ====================
+        /// <summary>
+        /// Constructor nhận 3 tham số từ LoginWindow sau khi đăng nhập thành công
+        /// QUAN TRỌNG: Mọi initialization phải được wrap trong try-catch để tránh crash
+        /// </summary>
+        /// <param name="loggedInUser">User vừa đăng nhập</param>
+        /// <param name="musicService">Service quản lý bài hát</param>
+        /// <param name="playlistService">Service quản lý playlist</param>
         public MainWindow(User loggedInUser, MusicService musicService, PlaylistService playlistService)
         {
             try
@@ -105,7 +123,14 @@ namespace Wotiso.MusicApp
             }
         }
 
-        // MỚI: Tải danh sách playlist của user
+        // ==================== LOAD PLAYLISTS ====================
+        /// <summary>
+        /// Tải tất cả playlist của user từ database
+        /// - Thêm item "Tất cả bài hát (Thư viện)" với PlaylistId = -1 làm mặc định
+        /// - Load tất cả playlist của user vào ListBox bên trái
+        /// - Cập nhật context menu "Thêm vào playlist"
+        /// - LƯU TẤT CẢ PLAYLIST để dùng cho search filter
+        /// </summary>
         private void LoadUserPlaylists()
         {
             try
@@ -113,6 +138,11 @@ namespace Wotiso.MusicApp
                 LogDebug("LoadUserPlaylists: Getting playlists from service...");
                 _playlists = _playlistService.GetPlaylistsForUser(_currentUser.UserId);
                 LogDebug($"LoadUserPlaylists: Got {_playlists.Count} playlists");
+
+                // NEW: Lưu tất cả playlist để filter
+                _allPlaylists = new List<Playlist>();
+                _allPlaylists.Add(new Playlist { PlaylistId = -1, PlaylistName = "Tất cả bài hát (Thư viện)" });
+                _allPlaylists.AddRange(_playlists);
 
                 LogDebug("LoadUserPlaylists: Clearing PlaylistList...");
                 PlaylistList.ItemsSource = null;
@@ -134,6 +164,9 @@ namespace Wotiso.MusicApp
                 LogDebug("LoadUserPlaylists: Updating context menu...");
                 UpdateAddToPlaylistMenu();
                 
+                // Clear playlist search box
+                PlaylistSearchBox.Text = "";
+                
                 LogDebug("LoadUserPlaylists: COMPLETED");
             }
             catch (Exception ex)
@@ -143,13 +176,21 @@ namespace Wotiso.MusicApp
             }
         }
 
-        // SỬA: Dùng service để tải thư viện chung
+        // ==================== LOAD LIBRARY (TẤT CẢ BÀI HÁT) ====================
+        /// <summary>
+        /// Tải TẤT CẢ bài hát từ database (không phân biệt playlist)
+        /// Đây là view mặc định khi mở app hoặc khi click "Tất cả bài hát (Thư viện)"
+        /// - Set _currentViewingPlaylist = null để biết đang xem Library
+        /// - Load bài đầu tiên vào player (không auto play)
+        /// - LƯU TẤT CẢ BÀI HÁT để dùng cho search filter
+        /// </summary>
         private void LoadLibrarySongs()
         {
             try
             {
                 LogDebug("LoadLibrarySongs: Getting all songs from service...");
                 _songs = _musicService.GetAllSongs();
+                _allSongsInCurrentView = new List<Song>(_songs); // NEW: Lưu để filter
                 LogDebug($"LoadLibrarySongs: Got {_songs.Count} songs");
 
                 LogDebug("LoadLibrarySongs: Setting SongList.ItemsSource...");
@@ -173,6 +214,9 @@ namespace Wotiso.MusicApp
                 UpdateEmptyState();
                 UpdateSongCount();
                 
+                // Clear song search box
+                SongSearchBox.Text = "";
+                
                 LogDebug("LoadLibrarySongs: COMPLETED");
             }
             catch (Exception ex)
@@ -182,10 +226,18 @@ namespace Wotiso.MusicApp
             }
         }
 
-        // MỚI: Tải bài hát từ một playlist cụ thể
+        // ==================== LOAD PLAYLIST CỤ THỂ ====================
+        /// <summary>
+        /// Tải bài hát từ 1 playlist cụ thể (không phải Library)
+        /// - Lưu playlist đang xem vào _currentViewingPlaylist
+        /// - Load danh sách bài hát trong playlist đó
+        /// - Cập nhật title hiển thị tên playlist
+        /// - LƯU TẤT CẢ BÀI HÁT để dùng cho search filter
+        /// </summary>
         private void LoadSongsFromPlaylist(Playlist playlist)
         {
             _songs = _playlistService.GetSongsForPlaylist(playlist.PlaylistId);
+            _allSongsInCurrentView = new List<Song>(_songs); // NEW: Lưu để filter
             SongList.ItemsSource = _songs;
 
             _currentViewingPlaylist = playlist;
@@ -205,6 +257,9 @@ namespace Wotiso.MusicApp
 
             UpdateEmptyState();
             UpdateSongCount();
+            
+            // Clear song search box
+            SongSearchBox.Text = "";
         }
 
         // MỚI: Xử lý khi bấm chọn một playlist
@@ -226,22 +281,27 @@ namespace Wotiso.MusicApp
         // MỚI: Xử lý nút "Tạo Playlist"
         private void CreatePlaylist_Click(object sender, RoutedEventArgs e)
         {
-            string name = NewPlaylistNameBox.Text;
-            if (string.IsNullOrWhiteSpace(name))
+            // Show input dialog to get playlist name
+            var inputDialog = new InputDialog("Tạo Playlist Mới", "Nhập tên playlist:");
+            if (inputDialog.ShowDialog() == true)
             {
-                MessageBox.Show("Vui lòng nhập tên cho playlist mới.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                string name = inputDialog.InputText;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    MessageBox.Show("Vui lòng nhập tên cho playlist mới.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
 
-            try
-            {
-                _playlistService.CreateNewPlaylist(_currentUser.UserId, name);
-                NewPlaylistNameBox.Text = "";
-                LoadUserPlaylists(); // Tải lại danh sách
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Lỗi khi tạo playlist: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                try
+                {
+                    _playlistService.CreateNewPlaylist(_currentUser.UserId, name);
+                    LoadUserPlaylists(); // Tải lại danh sách
+                    MessageBox.Show($"Đã tạo playlist '{name}' thành công!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Lỗi khi tạo playlist: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
         private void DeletePlaylistMenuItem_Click(object sender, RoutedEventArgs e)
@@ -318,7 +378,16 @@ namespace Wotiso.MusicApp
             LoadSongsFromPlaylist(_currentViewingPlaylist); // Tải lại list
         }
 
-        // SỬA: Dùng Service
+        // ==================== THÊM NHẠC TỪ LOCAL ====================
+        /// <summary>
+        /// Xử lý khi user click nút "Add Songs"
+        /// QUAN TRỌNG để fix màn hình đen:
+        /// 1. Validate từng file trước khi add (tồn tại, không rỗng, readable)
+        /// 2. Disable UI + cursor Wait khi đang load
+        /// 3. Load trong background thread (Task.Run)
+        /// 4. Force UI refresh SAU KHI load xong
+        /// 5. Hiển thị MessageBox khi UI đã render hoàn toàn
+        /// </summary>
         private async void SelectFiles_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -343,7 +412,9 @@ namespace Wotiso.MusicApp
                 var selectedFiles = dlg.FileNames.ToList();
                 LogDebug($"SelectFiles_Click: User selected {selectedFiles.Count} files");
 
-                // Validate files first
+                // ========== BƯỚC 1: VALIDATE TỪNG FILE ==========
+                // Kiểm tra file có hợp lệ không TRƯỚC KHI thêm vào database
+                // Tránh add file lỗi gây crash khi play
                 var invalidFiles = new List<string>();
                 var validFiles = new List<string>();
                 
@@ -407,13 +478,17 @@ namespace Wotiso.MusicApp
                     return;
                 }
 
-                // Disable UI temporarily to prevent user actions
+                // ========== BƯỚC 2: DISABLE UI ĐỂ TRÁNH FREEZE ==========
+                // QUAN TRỌNG: Disable UI để user không click linh tinh khi đang load
+                // Hiển thị cursor Wait để báo hiệu đang xử lý
                 this.IsEnabled = false;
                 this.Cursor = Cursors.Wait;
 
                 List<Song> newSongs = null;
                 try
                 {
+                    // ========== BƯỚC 3: LOAD TRONG BACKGROUND THREAD ==========
+                    // Task.Run để không block UI thread -> tránh màn hình đen
                     LogDebug($"SelectFiles_Click: Loading {validFiles.Count} valid songs in background...");
                     newSongs = await Task.Run(() => _musicService.LoadLocalSongsFromFiles(validFiles));
                     LogDebug($"SelectFiles_Click: Loaded {newSongs?.Count ?? 0} new songs");
@@ -431,11 +506,15 @@ namespace Wotiso.MusicApp
                     return;
                 }
 
-                // Re-enable UI
+                // ========== BƯỚC 4: RE-ENABLE UI VÀ FORCE REFRESH ==========
+                // QUAN TRỌNG: Phải enable lại UI trước khi show MessageBox
                 this.IsEnabled = true;
                 this.Cursor = Cursors.Arrow;
                 
-                // Force UI refresh
+                // ========== BƯỚC 5: FORCE UI REFRESH ĐỂ TRÁNH MÀN HÌNH ĐEN ==========
+                // UpdateLayout() - Force WPF re-layout tất cả controls
+                // InvalidateVisual() - Force WPF re-render visual tree
+                // Dispatcher.InvokeAsync - Đảm bảo UI thread thực sự render xong
                 LogDebug("SelectFiles_Click: Re-enabling UI and forcing refresh...");
                 this.UpdateLayout();
                 this.InvalidateVisual();
@@ -610,12 +689,23 @@ namespace Wotiso.MusicApp
             }
         }
 
+        // ==================== PHÁT NHẠC ====================
+        /// <summary>
+        /// Phát một bài hát cụ thể
+        /// QUAN TRỌNG để fix màn hình đen khi play:
+        /// 1. Stop và clear source cũ hoàn toàn
+        /// 2. Render UI TRƯỚC với delay 50ms
+        /// 3. Set source và delay 100ms cho MediaElement buffer
+        /// 4. Play và restore cursor ngay
+        /// Giải thích: MediaElement.Play() có thể block UI nếu file lớn hoặc codec phức tạp
+        /// </summary>
         private async void PlaySong(Song song)
         {
             try
             {
                 LogDebug($"PlaySong: Starting to play '{song.Title}'");
                 
+                // Kiểm tra file có tồn tại không
                 if (!File.Exists(song.FilePath))
                 {
                     LogDebug($"PlaySong ERROR: File not found - {song.FilePath}");
@@ -623,29 +713,35 @@ namespace Wotiso.MusicApp
                     return;
                 }
 
-                // Stop current playback first
+                // ========== BƯỚC 1: STOP VÀ CLEAR HOÀN TOÀN ==========
+                // Phải stop và clear source trước khi load bài mới
+                // Tránh conflict giữa bài cũ và bài mới
                 LogDebug("PlaySong: Stopping current media...");
                 mediaPlayer.Stop();
                 mediaPlayer.Source = null;
                 _timer?.Stop();
                 
-                // Update UI immediately to show we're loading
+                // ========== BƯỚC 2: UPDATE UI VỚI CURSOR WAIT ==========
                 LogDebug("PlaySong: Updating UI for loading state...");
-                this.Cursor = Cursors.Wait;
-                UpdateNowPlaying(song);
+                this.Cursor = Cursors.Wait; // Báo hiệu đang load
+                UpdateNowPlaying(song);      // Hiển thị tên bài đang load
                 
-                // Force UI refresh FIRST
+                // ========== BƯỚC 3: FORCE UI RENDER TRƯỚC KHI LOAD MEDIA ==========
+                // QUAN TRỌNG: Phải cho UI render xong TRƯỚC KHI load file nhạc
+                // Nếu không, MediaElement sẽ block UI thread -> màn hình đen
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                await Task.Delay(50); // Give UI time to actually render
+                await Task.Delay(50); // Delay 50ms để đảm bảo UI thực sự vẽ xong
                 
-                // Set source WITHOUT playing immediately - let MediaOpened handle play
+                // ========== BƯỚC 4: SET SOURCE VÀ CHO BUFFER ==========
+                // Set source nhưng CHƯA play ngay để MediaElement có time buffer
                 LogDebug($"PlaySong: Setting media source to {song.FilePath}");
                 mediaPlayer.Source = new Uri(song.FilePath);
                 
-                // Small delay to let MediaElement start loading
+                // Delay 100ms để MediaElement buffer một chút
                 await Task.Delay(100);
                 
-                // Now play - MediaOpened event will handle the rest
+                // ========== BƯỚC 5: PLAY VÀ RESTORE CURSOR ==========
+                // Bây giờ mới play - MediaOpened event sẽ xử lý phần còn lại
                 LogDebug("PlaySong: Calling Play()");
                 mediaPlayer.Play();
                 
@@ -777,8 +873,14 @@ namespace Wotiso.MusicApp
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ClickCount == 2) WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-            else DragMove();
+            if (e.ClickCount == 2) 
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            }
+            else 
+            {
+                DragMove();
+            }
         }
 
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -835,11 +937,18 @@ namespace Wotiso.MusicApp
                 this.WindowState = WindowState.Normal;
         }
 
+        // ==================== WINDOW LOADED EVENT ====================
+        /// <summary>
+        /// Event chạy sau khi Window đã được load hoàn toàn
+        /// QUAN TRỌNG: Force UI refresh lần cuối để fix màn hình đen
+        /// Đây là safety net cuối cùng đảm bảo UI được render
+        /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             try
             {
                 LogDebug("===== Window_Loaded EVENT =====");
+                // Log thông tin window để debug
                 LogDebug($"Window ActualWidth: {this.ActualWidth}");
                 LogDebug($"Window ActualHeight: {this.ActualHeight}");
                 LogDebug($"Window IsVisible: {this.IsVisible}");
@@ -847,11 +956,13 @@ namespace Wotiso.MusicApp
                 LogDebug($"WindowState: {this.WindowState}");
                 LogDebug($"Background: {this.Background}");
                 
-                // 🔧 FORCE UI REFRESH - Fix black screen
+                // ========== FORCE UI REFRESH LẦN CUỐI ==========
+                // Đây là lần cuối cùng đảm bảo UI được vẽ đúng
+                // Fix trường hợp màn hình đen do WPF rendering issue
                 LogDebug("🔧 Forcing UI update...");
-                this.UpdateLayout();
-                this.InvalidateVisual();
-                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                this.UpdateLayout();      // Force layout
+                this.InvalidateVisual();  // Force visual render
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render); // Force dispatcher render
                 LogDebug("✅ UI update completed");
                 
                 LogDebug("===== Window_Loaded COMPLETED =====");
@@ -859,6 +970,156 @@ namespace Wotiso.MusicApp
             catch (Exception ex)
             {
                 LogDebug($"ERROR in Window_Loaded: {ex.Message}");
+            }
+        }
+
+        // ==================== SEARCH FUNCTIONALITY ====================
+
+        /// <summary>
+        /// Xử lý tìm kiếm bài hát theo tên
+        /// - Tìm kiếm trong danh sách hiện tại (Library hoặc Playlist cụ thể)
+        /// - Không phân biệt hoa thường
+        /// - Tìm theo từ khóa có trong tên bài hát
+        /// - Giữ nguyên _allSongsInCurrentView để có thể clear search và quay lại
+        /// </summary>
+        private void SongSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            try
+            {
+                var keyword = SongSearchBox.Text.Trim();
+                LogDebug($"SongSearchBox_TextChanged: Searching for '{keyword}'");
+
+                // Toggle placeholder visibility
+                SongSearchPlaceholder.Visibility = string.IsNullOrEmpty(keyword) 
+                    ? Visibility.Visible 
+                    : Visibility.Collapsed;
+
+                // If search is empty, show all songs
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    LogDebug("SongSearchBox_TextChanged: Empty search, showing all songs");
+                    _songs = new List<Song>(_allSongsInCurrentView);
+                    SongList.ItemsSource = _songs;
+                    UpdateEmptyState();
+                    UpdateSongCount();
+                    return;
+                }
+
+                // Filter songs by keyword (case-insensitive)
+                var filteredSongs = _allSongsInCurrentView
+                    .Where(s => s.Title != null && 
+                               s.Title.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+
+                LogDebug($"SongSearchBox_TextChanged: Found {filteredSongs.Count} matching songs");
+
+                // Update UI with filtered results
+                _songs = filteredSongs;
+                SongList.ItemsSource = _songs;
+
+                // Reset selection if no songs found
+                if (_songs.Count == 0)
+                {
+                    _currentIndex = -1;
+                    ResetTimeDisplay();
+                }
+                else
+                {
+                    // Select first song in filtered list
+                    _currentIndex = 0;
+                    SongList.SelectedIndex = 0;
+                }
+
+                UpdateEmptyState();
+                UpdateSongCount();
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in SongSearchBox_TextChanged: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Xử lý tìm kiếm playlist theo tên
+        /// - Tìm kiếm trong tất cả playlist của user
+        /// - Luôn giữ "Tất cả bài hát (Thư viện)" ở đầu danh sách
+        /// - Không phân biệt hoa thường
+        /// - Tìm theo từ khóa có trong tên playlist
+        /// </summary>
+        private void PlaylistSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            try
+            {
+                var keyword = PlaylistSearchBox.Text.Trim();
+                LogDebug($"PlaylistSearchBox_TextChanged: Searching for '{keyword}'");
+
+                // Toggle placeholder visibility
+                PlaylistSearchPlaceholder.Visibility = string.IsNullOrEmpty(keyword) 
+                    ? Visibility.Visible 
+                    : Visibility.Collapsed;
+
+                // Clear current playlist list
+                PlaylistList.ItemsSource = null;
+                PlaylistList.Items.Clear();
+
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    // Show all playlists if search is empty
+                    LogDebug("PlaylistSearchBox_TextChanged: Empty search, showing all playlists");
+                    
+                    foreach (var pl in _allPlaylists)
+                    {
+                        PlaylistList.Items.Add(pl);
+                    }
+                }
+                else
+                {
+                    // Filter playlists by keyword (case-insensitive)
+                    // Always keep "Tất cả bài hát (Thư viện)" at top
+                    var library = _allPlaylists.FirstOrDefault(p => p.PlaylistId == -1);
+                    if (library != null)
+                    {
+                        PlaylistList.Items.Add(library);
+                    }
+
+                    var filteredPlaylists = _allPlaylists
+                        .Where(p => p.PlaylistId != -1 && // Skip library (already added)
+                                   p.PlaylistName != null && 
+                                   p.PlaylistName.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .ToList();
+
+                    LogDebug($"PlaylistSearchBox_TextChanged: Found {filteredPlaylists.Count} matching playlists");
+
+                    foreach (var pl in filteredPlaylists)
+                    {
+                        PlaylistList.Items.Add(pl);
+                    }
+                }
+
+                // Keep current selection if possible
+                if (PlaylistList.Items.Count > 0)
+                {
+                    // Try to find current viewing playlist in filtered list
+                    var currentPlaylistInList = PlaylistList.Items.Cast<Playlist>()
+                        .FirstOrDefault(p => _currentViewingPlaylist == null 
+                            ? p.PlaylistId == -1 
+                            : p.PlaylistId == _currentViewingPlaylist.PlaylistId);
+
+                    if (currentPlaylistInList != null)
+                    {
+                        PlaylistList.SelectedItem = currentPlaylistInList;
+                    }
+                    else
+                    {
+                        PlaylistList.SelectedIndex = 0;
+                    }
+                }
+
+                UpdateAddToPlaylistMenu(); // Update context menu với playlists đã filter
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in PlaylistSearchBox_TextChanged: {ex.Message}");
             }
         }
     }
