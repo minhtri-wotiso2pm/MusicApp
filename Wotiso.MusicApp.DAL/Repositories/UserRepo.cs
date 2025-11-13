@@ -7,6 +7,11 @@ namespace Wotiso.MusicApp.DAL.Repositories
     {
         private MusicPlayerDbContext _ctx;
 
+        public UserRepository(MusicPlayerDbContext context)
+        {
+            _ctx = context;
+        }
+
         public User? GetByEmail(string email)
         {
             _ctx = new MusicPlayerDbContext();

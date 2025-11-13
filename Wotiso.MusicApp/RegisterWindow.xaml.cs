@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Windows;
 using Wotiso.MusicApp.BLL.Services;
 
@@ -6,7 +6,13 @@ namespace Wotiso.MusicApp.Views
 {
     public partial class RegisterWindow : Window
     {
-        private readonly UserService _service = new();
+        private readonly UserService _service;
+
+        public RegisterWindow(UserService userService) // Nhận UserService
+        {
+            InitializeComponent();
+            _service = userService; 
+        }
 
         public RegisterWindow()
         {

@@ -7,8 +7,12 @@ namespace Wotiso.MusicApp.BLL.Services
 {
     public class UserService
     {
-        private UserRepository _repo = new();
+        private UserRepository _repo;
 
+        public UserService(UserRepository userRepository)
+        {
+            _repo = userRepository;
+        }
 
         public User? GetByEmail(string email)
         {

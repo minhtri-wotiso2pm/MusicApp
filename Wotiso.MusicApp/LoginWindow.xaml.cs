@@ -1,23 +1,51 @@
-using System.Text;
+﻿using System.Text;
 using System.Windows;
 using Wotiso.MusicApp.BLL.Services;
+using Wotiso.MusicApp.DAL;
 using Wotiso.MusicApp.DAL.Entities;
+using Wotiso.MusicApp.DAL.Repositories;
 
 namespace Wotiso.MusicApp.Views
 {
     public partial class LoginWindow : Window
     {
-        private UserService _service = new();
+        private readonly MusicPlayerDbContext _context;
+        private readonly UserRepository _userRepo;
+        private readonly SongRepository _songRepo;
+        private readonly PlaylistRepo _playlistRepo;
+
+        private readonly UserService _userService;
+        private readonly MusicService _musicService;
+        private readonly PlaylistService _playlistService;
         private static int WrongPasswordCount = 0;
         private const int MaxWrongAttempts = 5;
         public LoginWindow()
         {
             InitializeComponent();
+            try
+            {
+                _context = new MusicPlayerDbContext();
+
+                _userRepo = new UserRepository(_context);
+                _songRepo = new SongRepository(_context);
+                _playlistRepo = new PlaylistRepo(_context);
+
+                // Giả sử các Service của bạn đều có Constructor nhận Repo
+                _userService = new UserService(_userRepo);
+                _musicService = new MusicService(_songRepo);
+                _playlistService = new PlaylistService(_playlistRepo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Can not connect Database.\n Error: {ex.Message}",
+                                "Connection", MessageBoxButton.OK, MessageBoxImage.Error);
+                Application.Current.Shutdown();
+            }
         }
 
-        public LoginWindow(String email, String password)
+        public LoginWindow(String email, String password):this()
         {
-            InitializeComponent();
+            
             EmailText.Text = email;
             PasswordText.Password = password;
         }
@@ -35,7 +63,7 @@ namespace Wotiso.MusicApp.Views
                 return;
             }
 
-            var userByEmail = _service.GetByEmail(email);
+            var userByEmail = _userService.GetByEmail(email);
             if (userByEmail == null)
             {
                 MessageBox.Show("Email does not exist!",
@@ -44,7 +72,7 @@ namespace Wotiso.MusicApp.Views
                 return;
             }
 
-            var user = _service.Login(email, pass);
+            var user = _userService.Login(email, pass);
 
             if (user == null)
             {
@@ -70,7 +98,7 @@ namespace Wotiso.MusicApp.Views
 
             WrongPasswordCount = 0;
 
-            var main = new MainWindow();
+            var main = new MainWindow(user, _musicService, _playlistService);
             main.Show();
 
             this.Close();
@@ -78,7 +106,7 @@ namespace Wotiso.MusicApp.Views
 
         private void OpenRegister_Click(object sender, RoutedEventArgs e)
         {
-            var reg = new RegisterWindow();
+            var reg = new RegisterWindow(_userService);
             reg.ShowDialog();
         }
 
