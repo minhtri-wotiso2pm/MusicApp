@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -33,70 +34,152 @@ namespace Wotiso.MusicApp
         // Biến tạm để biết đang xem playlist nào
         private Playlist _currentViewingPlaylist = null; // null = xem Library
 
+        // DEBUG: Logger
+        private void LogDebug(string message)
+        {
+            Debug.WriteLine($"[MainWindow] {DateTime.Now:HH:mm:ss.fff} - {message}");
+            try
+            {
+                File.AppendAllText("D:\\musicapp_debug.log", $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} - {message}\n");
+            }
+            catch { }
+        }
+
         // SỬA: Constructor mới nhận 3 tham số
         public MainWindow(User loggedInUser, MusicService musicService, PlaylistService playlistService)
         {
-            InitializeComponent();
+            try
+            {
+                LogDebug("===== MainWindow Constructor START =====");
+                LogDebug($"User: {loggedInUser?.UserName ?? "NULL"}");
+                
+                LogDebug("Step 1: InitializeComponent...");
+                InitializeComponent();
+                LogDebug("Step 1: InitializeComponent DONE");
 
-            _currentUser = loggedInUser;
-            _musicService = musicService;
-            _playlistService = playlistService;
+                LogDebug("Step 2: Set services...");
+                _currentUser = loggedInUser;
+                _musicService = musicService;
+                _playlistService = playlistService;
+                LogDebug("Step 2: Services set DONE");
 
-            // Tải dữ liệu của user
-            LoadUserPlaylists();
-            LoadLibrarySongs(); // Tải thư viện (tất cả bài hát) làm mặc định
+                LogDebug("Step 3: LoadUserPlaylists...");
+                LoadUserPlaylists();
+                LogDebug("Step 3: LoadUserPlaylists DONE");
+                
+                LogDebug("Step 4: LoadLibrarySongs...");
+                LoadLibrarySongs();
+                LogDebug("Step 4: LoadLibrarySongs DONE");
 
-            // Timer cập nhật progress
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _timer.Tick += Timer_Tick;
+                LogDebug("Step 5: Initialize Timer...");
+                _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+                _timer.Tick += Timer_Tick;
+                LogDebug("Step 5: Timer initialized DONE");
 
-            VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
-            mediaPlayer.Volume = VolumeSlider.Value;
+                LogDebug("Step 6: Setup Volume...");
+                VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
+                mediaPlayer.Volume = VolumeSlider.Value;
+                LogDebug($"Step 6: Volume set to {VolumeSlider.Value} DONE");
 
-            // Sửa lỗi thanh tua nhạc
-            ProgressSlider.ValueChanged += ProgressSlider_ValueChanged;
-            ProgressSlider.PreviewMouseDown += ProgressSlider_PreviewMouseDown;
-            ProgressSlider.PreviewMouseUp += ProgressSlider_PreviewMouseUp;
+                LogDebug("Step 7: Setup Progress Slider...");
+                ProgressSlider.ValueChanged += ProgressSlider_ValueChanged;
+                ProgressSlider.PreviewMouseDown += ProgressSlider_PreviewMouseDown;
+                ProgressSlider.PreviewMouseUp += ProgressSlider_PreviewMouseUp;
+                LogDebug("Step 7: Progress Slider setup DONE");
 
-            UpdateEmptyState();
+                LogDebug("Step 8: UpdateEmptyState...");
+                UpdateEmptyState();
+                LogDebug("Step 8: UpdateEmptyState DONE");
+
+                LogDebug("===== MainWindow Constructor COMPLETED SUCCESSFULLY =====");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"!!!!! EXCEPTION in Constructor: {ex.Message}");
+                LogDebug($"Stack Trace: {ex.StackTrace}");
+                LogDebug($"Inner Exception: {ex.InnerException?.Message}");
+                
+                MessageBox.Show($"CRITICAL ERROR in MainWindow Constructor:\n\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}\n\nCheck log file: D:\\musicapp_debug.log",
+                    "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
         }
 
         // MỚI: Tải danh sách playlist của user
         private void LoadUserPlaylists()
         {
-            _playlists = _playlistService.GetPlaylistsForUser(_currentUser.UserId);
-
-            PlaylistList.ItemsSource = null;
-            PlaylistList.Items.Clear();
-            PlaylistList.Items.Add(new Playlist { PlaylistId = -1, PlaylistName = "Tất cả bài hát (Thư viện)" });
-
-            foreach (var pl in _playlists)
+            try
             {
-                PlaylistList.Items.Add(pl);
-            }
+                LogDebug("LoadUserPlaylists: Getting playlists from service...");
+                _playlists = _playlistService.GetPlaylistsForUser(_currentUser.UserId);
+                LogDebug($"LoadUserPlaylists: Got {_playlists.Count} playlists");
 
-            PlaylistList.SelectedIndex = 0;
-            UpdateAddToPlaylistMenu();
+                LogDebug("LoadUserPlaylists: Clearing PlaylistList...");
+                PlaylistList.ItemsSource = null;
+                PlaylistList.Items.Clear();
+                
+                LogDebug("LoadUserPlaylists: Adding default library item...");
+                PlaylistList.Items.Add(new Playlist { PlaylistId = -1, PlaylistName = "Tất cả bài hát (Thư viện)" });
+
+                LogDebug("LoadUserPlaylists: Adding user playlists...");
+                foreach (var pl in _playlists)
+                {
+                    PlaylistList.Items.Add(pl);
+                    LogDebug($"  - Added playlist: {pl.PlaylistName}");
+                }
+
+                LogDebug("LoadUserPlaylists: Setting selected index to 0...");
+                PlaylistList.SelectedIndex = 0;
+                
+                LogDebug("LoadUserPlaylists: Updating context menu...");
+                UpdateAddToPlaylistMenu();
+                
+                LogDebug("LoadUserPlaylists: COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in LoadUserPlaylists: {ex.Message}");
+                throw;
+            }
         }
 
         // SỬA: Dùng service để tải thư viện chung
         private void LoadLibrarySongs()
         {
-            _songs = _musicService.GetAllSongs();
-            SongList.ItemsSource = _songs;
-
-            _currentViewingPlaylist = null;
-            CurrentListTitle.Text = "Tất cả bài hát (Thư viện)";
-
-            if (_songs.Count > 0 && _currentIndex == -1)
+            try
             {
-                _currentIndex = 0;
-                SongList.SelectedIndex = _currentIndex;
-                LoadSongInfo(_songs[_currentIndex]);
-            }
+                LogDebug("LoadLibrarySongs: Getting all songs from service...");
+                _songs = _musicService.GetAllSongs();
+                LogDebug($"LoadLibrarySongs: Got {_songs.Count} songs");
 
-            UpdateEmptyState();
-            UpdateSongCount();
+                LogDebug("LoadLibrarySongs: Setting SongList.ItemsSource...");
+                SongList.ItemsSource = _songs;
+
+                _currentViewingPlaylist = null;
+                LogDebug("LoadLibrarySongs: Updating CurrentListTitle...");
+                CurrentListTitle.Text = "Tất cả bài hát (Thư viện)";
+
+                if (_songs.Count > 0 && _currentIndex == -1)
+                {
+                    LogDebug("LoadLibrarySongs: Setting current index to 0...");
+                    _currentIndex = 0;
+                    SongList.SelectedIndex = _currentIndex;
+                    
+                    LogDebug($"LoadLibrarySongs: Loading song info for: {_songs[_currentIndex].Title}");
+                    LoadSongInfo(_songs[_currentIndex]);
+                }
+
+                LogDebug("LoadLibrarySongs: Updating UI states...");
+                UpdateEmptyState();
+                UpdateSongCount();
+                
+                LogDebug("LoadLibrarySongs: COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in LoadLibrarySongs: {ex.Message}");
+                throw;
+            }
         }
 
         // MỚI: Tải bài hát từ một playlist cụ thể
@@ -238,32 +321,155 @@ namespace Wotiso.MusicApp
         // SỬA: Dùng Service
         private async void SelectFiles_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new OpenFileDialog { Title = "Chọn các file nhạc", Filter = "Nhạc|*.mp3;*.wav;*.mp4", Multiselect = true };
-            bool? result = dlg.ShowDialog();
-            if (result == true)
+            try
             {
+                LogDebug("SelectFiles_Click: Opening file dialog...");
+                var dlg = new OpenFileDialog { 
+                    Title = "Chọn các file nhạc", 
+                    Filter = "Tất cả file nhạc|*.mp3;*.wav;*.wma;*.aac;*.m4a;*.mp4;*.avi;*.wmv;*.mov|" +
+                             "Audio Files|*.mp3;*.wav;*.wma;*.aac;*.m4a|" +
+                             "Video Files|*.mp4;*.avi;*.wmv;*.mov|" +
+                             "All Files|*.*",
+                    Multiselect = true 
+                };
+                bool? result = dlg.ShowDialog();
+                
+                if (result != true) 
+                {
+                    LogDebug("SelectFiles_Click: User cancelled");
+                    return;
+                }
+
                 var selectedFiles = dlg.FileNames.ToList();
+                LogDebug($"SelectFiles_Click: User selected {selectedFiles.Count} files");
+
+                // Validate files first
+                var invalidFiles = new List<string>();
+                var validFiles = new List<string>();
+                
+                foreach (var file in selectedFiles)
+                {
+                    LogDebug($"Checking file: {file}");
+                    
+                    if (!File.Exists(file))
+                    {
+                        LogDebug($"  - File not found");
+                        invalidFiles.Add($"{Path.GetFileName(file)} - File không tồn tại");
+                        continue;
+                    }
+                    
+                    try
+                    {
+                        // Check if file is readable and not corrupted
+                        var fileInfo = new FileInfo(file);
+                        if (fileInfo.Length == 0)
+                        {
+                            LogDebug($"  - File is empty (0 bytes)");
+                            invalidFiles.Add($"{Path.GetFileName(file)} - File rỗng (0 bytes)");
+                            continue;
+                        }
+                        
+                        // Try to open file to check if it's accessible
+                        using (var stream = File.OpenRead(file))
+                        {
+                            // Read first byte to verify file is readable
+                            stream.ReadByte();
+                        }
+                        
+                        LogDebug($"  - File OK: {fileInfo.Length} bytes");
+                        validFiles.Add(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogDebug($"  - File validation error: {ex.Message}");
+                        invalidFiles.Add($"{Path.GetFileName(file)} - {ex.Message}");
+                    }
+                }
+
+                // Show validation results
+                if (invalidFiles.Count > 0)
+                {
+                    var message = $"Có {invalidFiles.Count} file không hợp lệ:\n\n" + 
+                                  string.Join("\n", invalidFiles.Take(10));
+                    if (invalidFiles.Count > 10)
+                        message += $"\n\n... và {invalidFiles.Count - 10} file khác";
+                    
+                    if (validFiles.Count > 0)
+                        message += $"\n\n{validFiles.Count} file hợp lệ sẽ được thêm vào.";
+                    
+                    MessageBox.Show(message, "Cảnh báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+
+                if (validFiles.Count == 0)
+                {
+                    LogDebug("SelectFiles_Click: No valid files to add");
+                    MessageBox.Show("Không có file nào hợp lệ để thêm vào!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // Disable UI temporarily to prevent user actions
+                this.IsEnabled = false;
+                this.Cursor = Cursors.Wait;
+
                 List<Song> newSongs = null;
                 try
                 {
-                    newSongs = await Task.Run(() => _musicService.LoadLocalSongsFromFiles(selectedFiles));
+                    LogDebug($"SelectFiles_Click: Loading {validFiles.Count} valid songs in background...");
+                    newSongs = await Task.Run(() => _musicService.LoadLocalSongsFromFiles(validFiles));
+                    LogDebug($"SelectFiles_Click: Loaded {newSongs?.Count ?? 0} new songs");
                 }
                 catch (Exception ex)
                 {
+                    LogDebug($"SelectFiles_Click ERROR: {ex.Message}");
+                    
+                    // Re-enable UI before showing error
+                    this.IsEnabled = true;
+                    this.Cursor = Cursors.Arrow;
+                    this.UpdateLayout();
+                    
                     MessageBox.Show($"Lỗi khi nhập file: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
+                // Re-enable UI
+                this.IsEnabled = true;
+                this.Cursor = Cursors.Arrow;
+                
+                // Force UI refresh
+                LogDebug("SelectFiles_Click: Re-enabling UI and forcing refresh...");
+                this.UpdateLayout();
+                this.InvalidateVisual();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                LogDebug("SelectFiles_Click: UI re-enabled and refreshed");
+
                 if (newSongs != null && newSongs.Count > 0)
                 {
+                    LogDebug("SelectFiles_Click: Reloading library songs...");
                     LoadLibrarySongs();
                     PlaylistList.SelectedIndex = 0;
-                    MessageBox.Show($"Đã thêm {newSongs.Count} bài hát mới!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                    
+                    // Show message after UI is fully refreshed
+                    await Dispatcher.InvokeAsync(() => {
+                        MessageBox.Show($"Đã thêm {newSongs.Count} bài hát mới!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }, DispatcherPriority.ApplicationIdle);
                 }
                 else
                 {
-                    MessageBox.Show("Các bài nhạc đã tồn tại trong kho!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    LogDebug("SelectFiles_Click: No new songs added (duplicates)");
+                    
+                    await Dispatcher.InvokeAsync(() => {
+                        MessageBox.Show("Các bài nhạc đã tồn tại trong kho!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }, DispatcherPriority.ApplicationIdle);
                 }
+                
+                LogDebug("SelectFiles_Click: Completed successfully");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"SelectFiles_Click FATAL ERROR: {ex.Message}");
+                this.IsEnabled = true;
+                this.Cursor = Cursors.Arrow;
+                MessageBox.Show($"Lỗi nghiêm trọng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -312,32 +518,53 @@ namespace Wotiso.MusicApp
             if (ShuffleButton != null) ShuffleButton.Content = _isShuffle ? "🔀  Shuffle ON" : "🔀  Shuffle";
         }
 
-        private void Play_Click(object sender, RoutedEventArgs e)
+        private async void Play_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentIndex < 0 || _currentIndex >= _songs.Count)
+            try
             {
-                if (_songs.Count > 0)
+                LogDebug("Play_Click: Started");
+                
+                if (_currentIndex < 0 || _currentIndex >= _songs.Count)
                 {
-                    _currentIndex = 0;
-                    SongList.SelectedIndex = 0;
+                    if (_songs.Count > 0)
+                    {
+                        _currentIndex = 0;
+                        SongList.SelectedIndex = 0;
+                        LogDebug("Play_Click: Reset index to 0");
+                    }
+                    else
+                    {
+                        LogDebug("Play_Click: No songs available");
+                        MessageBox.Show("Không có bài hát nào để phát!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+                
+                if (_isPaused)
+                {
+                    LogDebug("Play_Click: Resuming from pause");
+                    
+                    // Force UI refresh before resuming
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                    
+                    mediaPlayer.Play();
+                    _isPaused = false;
+                    _timer?.Start();
                 }
                 else
                 {
-                    MessageBox.Show("Không có bài hát nào để phát!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                    LogDebug($"Play_Click: Playing song at index {_currentIndex}");
+                    PlaySong(_songs[_currentIndex]);
                 }
+                
+                UpdatePlayPauseButtons();
+                LogDebug("Play_Click: Completed");
             }
-            if (_isPaused)
+            catch (Exception ex)
             {
-                mediaPlayer.Play();
-                _isPaused = false;
-                _timer?.Start();
+                LogDebug($"Play_Click ERROR: {ex.Message}");
+                MessageBox.Show($"Lỗi khi phát nhạc: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            else
-            {
-                PlaySong(_songs[_currentIndex]);
-            }
-            UpdatePlayPauseButtons();
         }
 
         private void Pause_Click(object sender, RoutedEventArgs e)
@@ -383,42 +610,90 @@ namespace Wotiso.MusicApp
             }
         }
 
-        private void PlaySong(Song song)
+        private async void PlaySong(Song song)
         {
-            if (!File.Exists(song.FilePath))
-            {
-                MessageBox.Show($"File không tồn tại:\n{song.FilePath}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
             try
             {
-                mediaPlayer.Source = new Uri(song.FilePath);
-                mediaPlayer.Play();
-                _isPaused = false;
-                _timer?.Start();
+                LogDebug($"PlaySong: Starting to play '{song.Title}'");
+                
+                if (!File.Exists(song.FilePath))
+                {
+                    LogDebug($"PlaySong ERROR: File not found - {song.FilePath}");
+                    MessageBox.Show($"File không tồn tại:\n{song.FilePath}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Stop current playback first
+                LogDebug("PlaySong: Stopping current media...");
+                mediaPlayer.Stop();
+                mediaPlayer.Source = null;
+                _timer?.Stop();
+                
+                // Update UI immediately to show we're loading
+                LogDebug("PlaySong: Updating UI for loading state...");
+                this.Cursor = Cursors.Wait;
                 UpdateNowPlaying(song);
+                
+                // Force UI refresh FIRST
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                await Task.Delay(50); // Give UI time to actually render
+                
+                // Set source WITHOUT playing immediately - let MediaOpened handle play
+                LogDebug($"PlaySong: Setting media source to {song.FilePath}");
+                mediaPlayer.Source = new Uri(song.FilePath);
+                
+                // Small delay to let MediaElement start loading
+                await Task.Delay(100);
+                
+                // Now play - MediaOpened event will handle the rest
+                LogDebug("PlaySong: Calling Play()");
+                mediaPlayer.Play();
+                
+                _isPaused = false;
+                
+                // Restore cursor
+                this.Cursor = Cursors.Arrow;
+                
                 UpdatePlayPauseButtons();
+                LogDebug("PlaySong: Completed successfully");
             }
             catch (Exception ex)
             {
+                LogDebug($"PlaySong ERROR: {ex.Message}");
+                this.Cursor = Cursors.Arrow;
+                _timer?.Stop();
                 MessageBox.Show($"Không thể phát bài hát:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        private void LoadSongInfo(Song song)
+        private async void LoadSongInfo(Song song)
         {
-            if (!File.Exists(song.FilePath))
-            {
-                ResetTimeDisplay();
-                return;
-            }
             try
             {
-                mediaPlayer.Source = new Uri(song.FilePath);
-                mediaPlayer.Stop();
-                UpdateNowPlaying(song);
+                LogDebug($"LoadSongInfo: Loading info for '{song.Title}'");
+                
+                if (!File.Exists(song.FilePath))
+                {
+                    LogDebug("LoadSongInfo: File not found");
+                    ResetTimeDisplay();
+                    return;
+                }
+
+                // Force UI refresh before loading media
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                
+                await Dispatcher.InvokeAsync(() => {
+                    mediaPlayer.Source = new Uri(song.FilePath);
+                    mediaPlayer.Stop();
+                    UpdateNowPlaying(song);
+                }, DispatcherPriority.Normal);
+                
+                LogDebug("LoadSongInfo: Completed");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogDebug($"LoadSongInfo ERROR: {ex.Message}");
+            }
         }
 
         private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -558,6 +833,33 @@ namespace Wotiso.MusicApp
                 this.WindowState = WindowState.Maximized;
             else
                 this.WindowState = WindowState.Normal;
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogDebug("===== Window_Loaded EVENT =====");
+                LogDebug($"Window ActualWidth: {this.ActualWidth}");
+                LogDebug($"Window ActualHeight: {this.ActualHeight}");
+                LogDebug($"Window IsVisible: {this.IsVisible}");
+                LogDebug($"Window IsLoaded: {this.IsLoaded}");
+                LogDebug($"WindowState: {this.WindowState}");
+                LogDebug($"Background: {this.Background}");
+                
+                // 🔧 FORCE UI REFRESH - Fix black screen
+                LogDebug("🔧 Forcing UI update...");
+                this.UpdateLayout();
+                this.InvalidateVisual();
+                Dispatcher.Invoke(() => { }, DispatcherPriority.Render);
+                LogDebug("✅ UI update completed");
+                
+                LogDebug("===== Window_Loaded COMPLETED =====");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in Window_Loaded: {ex.Message}");
+            }
         }
     }
 }

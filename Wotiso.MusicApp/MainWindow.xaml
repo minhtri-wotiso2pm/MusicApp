@@ -4,9 +4,9 @@
         Title="Music Player" Height="700" Width="950"
         Background="#0d0d1a"
         ResizeMode="CanResize"
-        WindowStyle="None"
-        AllowsTransparency="True"
-        WindowStartupLocation="CenterScreen">
+        WindowStyle="SingleBorderWindow"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded">
 
     <Window.Resources>
         <DropShadowEffect x:Key="CardShadow" 
