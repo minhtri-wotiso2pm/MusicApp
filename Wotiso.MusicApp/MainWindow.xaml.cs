@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Wotiso.MusicApp.BLL.Services;
 using Wotiso.MusicApp.DAL;
@@ -25,6 +26,8 @@ namespace Wotiso.MusicApp
         private bool _isPaused = false;
         private bool _isLoop = false;
         private bool _isShuffle = false;
+        private DispatcherTimer _cdTimer;   // Timer cho đĩa CD quay
+        private double _cdAngle = 0;        // Góc quay hiện tại
 
         public MainWindow()
         {
@@ -39,6 +42,9 @@ namespace Wotiso.MusicApp
             // Timer cập nhật progress
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
             _timer.Tick += Timer_Tick;
+
+            _cdTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
+            _cdTimer.Tick += CDTimer_Tick;
 
             VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
             mediaPlayer.Volume = VolumeSlider.Value;
@@ -96,8 +102,7 @@ namespace Wotiso.MusicApp
                 {
                     // Refresh in UI thread
                     _songs.AddRange(newSongs);
-                    SongList.ItemsSource = null;
-                    SongList.ItemsSource = _songs;
+                    FillData(_songs);
 
                     if (_currentIndex == -1)
                     {
@@ -136,8 +141,7 @@ namespace Wotiso.MusicApp
 
                     _songs.RemoveAt(_currentIndex);
 
-                    SongList.ItemsSource = null;
-                    SongList.ItemsSource = _songs;
+                    FillData(_songs);
 
                     if (_songs.Count > 0)
                     {
@@ -178,6 +182,34 @@ namespace Wotiso.MusicApp
             }
         }
 
+        private void CDTimer_Tick(object sender, EventArgs e)
+        {
+            if (_currentIndex >= 0 && SongList.ItemContainerGenerator.ContainerFromIndex(_currentIndex) is ListBoxItem item)
+            {
+                var cd = FindVisualChild<Image>(item, "CDDisk");
+                if (cd != null && cd.RenderTransform is RotateTransform rt)
+                {
+                    _cdAngle += 2;
+                    if (_cdAngle >= 360) _cdAngle -= 360;
+                    rt.Angle = _cdAngle;
+                }
+            }
+        }
+
+        // Helper tìm Image theo tên trong DataTemplate
+        private T? FindVisualChild<T>(DependencyObject parent, string name) where T : FrameworkElement
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T t && t.Name == name)
+                    return t;
+                var result = FindVisualChild<T>(child, name);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
         private void Play_Click(object sender, RoutedEventArgs e)
         {
             if (_currentIndex < 0 || _currentIndex >= _songs.Count)
@@ -191,10 +223,13 @@ namespace Wotiso.MusicApp
                 mediaPlayer.Play();
                 _isPaused = false;
                 _timer?.Start();
+                _cdTimer?.Start(); // Bắt đầu quay CD
             }
             else
             {
                 PlaySong(_songs[_currentIndex]);
+                _cdAngle = 0;       // Reset góc quay CD khi phát bài mới
+                _cdTimer?.Start();  // Bắt đầu quay CD
             }
 
             UpdatePlayPauseButtons();
@@ -207,6 +242,7 @@ namespace Wotiso.MusicApp
                 mediaPlayer.Pause();
                 _isPaused = true;
                 _timer?.Stop();
+                _cdTimer?.Stop();   // Dừng quay CD
             }
 
             UpdatePlayPauseButtons();
@@ -449,6 +485,38 @@ namespace Wotiso.MusicApp
                 this.WindowState = WindowState.Normal;
         }
 
+        private void SearchBox_TextChanged(object sender, RoutedEventArgs e)
+        {
+            // Hiển thị/ẩn placeholder
+            PlaceholderText.Visibility = string.IsNullOrEmpty(SearchBox.Text)
+                                         ? Visibility.Visible
+                                         : Visibility.Collapsed;
 
+            string keyword = SearchBox.Text;
+            var result = _musicService.handeFindyByKeyword(keyword);
+
+            FillData(result);
+
+            if (result.Count > 0)
+            {
+                _currentIndex = 0;
+                SongList.SelectedIndex = _currentIndex;
+                LoadSongInfo(result[_currentIndex]);
+            }
+            else
+            {
+                _currentIndex = -1;
+                ResetTimeDisplay();
+            }
+
+            UpdateEmptyState();
+            UpdateSongCount();
+        }
+
+        private void FillData(List<Song> data)
+        {
+            SongList.ItemsSource = null;
+            SongList.ItemsSource = data;
+        }
     }
 }

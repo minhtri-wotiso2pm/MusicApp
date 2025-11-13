@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Linq;
 using Microsoft.EntityFrameworkCore;
-using Wotiso.MusicApp.DAL.Entities;
-
-namespace Wotiso.MusicApp.DAL.Repositories
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using System.Text;
+using Wotiso.MusicApp.DAL.Entities;namespace Wotiso.MusicApp.DAL.Repositories
 {
     public class SongRepository
     {
@@ -99,5 +99,39 @@ namespace Wotiso.MusicApp.DAL.Repositories
             _context.DownloadHistories.Add(history);
             _context.SaveChanges();
         }
+
+        private static string RemoveDiacritics(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var normalizedString = text.Normalize(NormalizationForm.FormD);
+            var stringBuilder = new StringBuilder();
+
+            foreach (var c in normalizedString)
+            {
+                var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+        }
+
+        public List<Song> HandleFindByKeyword(string keyword)
+        {
+            List<Song> result = new();
+
+            if (string.IsNullOrWhiteSpace(keyword))
+                return _context.Songs.ToList();
+
+            return _context.Songs
+                .Where(s => EF.Functions.Collate(s.Title, "Latin1_General_CI_AI").Contains(keyword) ||
+                            EF.Functions.Collate(s.Artist, "Latin1_General_CI_AI").Contains(keyword))
+                .ToList();
+        }
+
     }
 }

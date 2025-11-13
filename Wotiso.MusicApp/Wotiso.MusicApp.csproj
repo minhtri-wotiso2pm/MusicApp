@@ -9,6 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\cd.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\cd.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Wotiso.MusicApp.BLL\Wotiso.MusicApp.BLL.csproj">
       <Private>True</Private>
     </ProjectReference>

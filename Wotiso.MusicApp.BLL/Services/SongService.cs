@@ -7,11 +7,11 @@ using Wotiso.MusicApp.DAL.Repositories;
 
 namespace Wotiso.MusicApp.BLL.Services
 {
-    public class MusicService
+    public class SongService
     {
         private readonly SongRepository _repo;
 
-        public MusicService(SongRepository repo)
+        public SongService(SongRepository repo)
         {
             _repo = repo;
         }
@@ -103,8 +103,7 @@ namespace Wotiso.MusicApp.BLL.Services
             // Intentionally left as no-DB operation.
         }
 
-        // Search songs by keyword
-        public List<Song> handeFindyByKeyword(string keyword)
+        public List<Song> handeFindyByKeyword(String keyword)
         {
             return _repo.HandleFindByKeyword(keyword);
         }
