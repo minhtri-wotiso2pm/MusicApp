@@ -1,0 +1,63 @@
+<Window x:Class="Wotiso.MusicApp.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Login" Height="420" Width="380"
+        WindowStyle="None" Background="#0d0d1a"
+        AllowsTransparency="True"
+        WindowStartupLocation="CenterScreen">
+
+    <Border CornerRadius="18" Background="#0d0d1a" Padding="25">
+
+        <StackPanel>
+
+            <TextBlock Text="🎧 MUSIC LOGIN"
+                       FontSize="22"
+                       FontWeight="Bold"
+                       Foreground="#4ecca3"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,20"/>
+
+            <TextBlock Text="Email" Foreground="#cccccc"/>
+            <TextBox x:Name="EmailText"
+                     Background="#1a1a2e"
+                     Foreground="White"
+                     BorderBrush="#4ecca3"
+                     Padding="10"
+                     Margin="0,4,0,14"/>
+
+            <TextBlock Text="Password" Foreground="#cccccc"/>
+            <PasswordBox x:Name="PasswordText"
+                         Background="#1a1a2e"
+                         Foreground="White"
+                         BorderBrush="#4ecca3"
+                         Padding="10"
+                         Margin="0,4,0,20"/>
+
+            <Button Content="Log in"
+                    Height="46"
+                    Background="#e94560"
+                    Foreground="White"
+                    FontWeight="Bold"
+                    BorderThickness="0"
+                    Click="Login_Click"/>
+
+            <Button Content="Don't have an account? Register"
+                    Height="38"
+                    Margin="0,12,0,0"
+                    Background="Transparent"
+                    Foreground="#4ecca3"
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    Click="OpenRegister_Click"/>
+
+            <Button Content="Quit"
+                    Height="36"
+                    Margin="0,14,0,0"
+                    Background="#1a1a2e"
+                    Foreground="#e94560"
+                    BorderBrush="#e94560"
+                    Click="Close_Click"/>
+        </StackPanel>
+
+    </Border>
+</Window>
