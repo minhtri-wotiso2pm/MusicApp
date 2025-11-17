@@ -154,6 +154,8 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="#f1f1f1"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
         </Style>
 
         <Style x:Key="RepeatButtonTransparent" TargetType="RepeatButton">
@@ -459,22 +461,21 @@
                         </Border>
 
                         <!-- Playlist List -->
-                        <ScrollViewer Grid.Row="2" 
-                                      VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      Padding="0">
-                            <ListBox x:Name="PlaylistList" 
-                                     Style="{StaticResource ModernListBox}"
-                                     ItemContainerStyle="{StaticResource ModernPlaylistItem}"
-                                     SelectionChanged="PlaylistList_SelectionChanged">
-                                <ListBox.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="Xóa Playlist Này" 
-                                                  Click="DeletePlaylistMenuItem_Click"/>
-                                    </ContextMenu>
-                                </ListBox.ContextMenu>
-                            </ListBox>
-                        </ScrollViewer>
+                        <ListBox x:Name="PlaylistList" 
+                                 Grid.Row="2"
+                                 Style="{StaticResource ModernListBox}"
+                                 ItemContainerStyle="{StaticResource ModernPlaylistItem}"
+                                 SelectionChanged="PlaylistList_SelectionChanged"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.CanContentScroll="True">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Xóa Playlist Này" 
+                                              Click="DeletePlaylistMenuItem_Click"/>
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                        </ListBox>
 
                         <!-- Create Playlist Button -->
                         <Border Grid.Row="3" 
@@ -575,10 +576,50 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Text="♪" FontSize="16" Foreground="#4ecca3" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                                        
+                                                        <!-- Mini Album Disc - Rotating -->
+                                                        <Grid Grid.Column="0" Width="35" Height="35" Margin="0,0,12,0">
+                                                            <!-- Disc Background -->
+                                                            <Ellipse Fill="#1a1a2e" Stroke="#4ecca3" StrokeThickness="1.5"/>
+                                                            
+                                                            <!-- Disc with Rotation -->
+                                                            <Ellipse Fill="#e94560" Opacity="0.3" Margin="7">
+                                                                <Ellipse.RenderTransform>
+                                                                    <RotateTransform x:Name="MiniDiscRotation" CenterX="10.5" CenterY="10.5" Angle="0"/>
+                                                                </Ellipse.RenderTransform>
+                                                            </Ellipse>
+                                                            
+                                                            <!-- Center Hole -->
+                                                            <Ellipse Fill="#0d0d1a" Width="8" Height="8"/>
+                                                
+                                                            <!-- Music Note Icon -->
+                                                            <TextBlock Text="♪" FontSize="14" Foreground="#4ecca3" 
+                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                      FontWeight="Bold"/>
+                                                        </Grid>
+                                                        
                                                         <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <!-- Trigger when item is selected - Start rotation animation -->
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard x:Name="RotationStoryboard">
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="MiniDiscRotation"
+                                                                                   Storyboard.TargetProperty="Angle"
+                                                                                   From="0" To="360"
+                                                                                   Duration="0:0:10"
+                                                                                   RepeatBehavior="Forever"/>
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <StopStoryboard BeginStoryboardName="RotationStoryboard"/>
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
                                             </ControlTemplate>
                                         </Setter.Value>
                                     </Setter>
@@ -622,21 +663,10 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Now Playing Info - Compact -->
-                    <Grid Grid.Row="0" Margin="0,0,0,12">
-                        <TextBlock x:Name="NowPlayingLabel"
-                                   Text="No song playing" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold"
-                                   Foreground="White"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Grid>
-
                     <!-- Progress Slider - Compact -->
-                    <Grid Grid.Row="1" Margin="0,0,0,12">
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -669,15 +699,15 @@
                     </Grid>
 
                     <!-- Controls - Compact -->
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
                         <!-- Volume Control - Compact -->
-                        <Grid Grid.Column="0">
+                        <Grid Grid.Column="0" HorizontalAlignment="Left" Width="180">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
@@ -696,7 +726,7 @@
                                    VerticalAlignment="Center"/>
                         </Grid>
 
-                        <!-- Playback Controls - Compact -->
+                        <!-- Playback Controls - Center -->
                         <StackPanel Orientation="Horizontal" 
                                    Grid.Column="1"
                                    HorizontalAlignment="Center">
@@ -733,16 +763,70 @@
                                     Margin="4,0"/>
                         </StackPanel>
 
-                        <!-- Visualizer - Compact -->
+                        <!-- Visualizer - Animated Bars -->
                         <StackPanel Orientation="Horizontal" 
                                     Grid.Column="2"
                                    HorizontalAlignment="Right"
                                    VerticalAlignment="Center">
-                            <Border Width="3" Height="18" Background="#4ecca3" CornerRadius="2" Margin="2,0" Opacity="0.7"/>
-                            <Border Width="3" Height="26" Background="#4ecca3" CornerRadius="2" Margin="2,0" Opacity="0.8"/>
-                            <Border Width="3" Height="22" Background="#4ecca3" CornerRadius="2" Margin="2,0" Opacity="0.6"/>
-                            <Border Width="3" Height="30" Background="#4ecca3" CornerRadius="2" Margin="2,0" Opacity="0.9"/>
-                            <Border Width="3" Height="18" Background="#4ecca3" CornerRadius="2" Margin="2,0" Opacity="0.5"/>
+                            <Border x:Name="VisualizerBar1" 
+                                    Width="3" Height="18" 
+                                    Background="#4ecca3" 
+                                    CornerRadius="2" 
+                                    Margin="2,0" 
+                                    Opacity="0.7"
+                                    RenderTransformOrigin="0.5,1">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="1"/>
+                                </Border.RenderTransform>
+                            </Border>
+                            
+                            <Border x:Name="VisualizerBar2" 
+                                    Width="3" Height="26" 
+                                    Background="#4ecca3" 
+                                    CornerRadius="2" 
+                                    Margin="2,0" 
+                                    Opacity="0.8"
+                                    RenderTransformOrigin="0.5,1">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="1"/>
+                                </Border.RenderTransform>
+                            </Border>
+                            
+                            <Border x:Name="VisualizerBar3" 
+                                    Width="3" Height="22" 
+                                    Background="#4ecca3" 
+                                    CornerRadius="2" 
+                                    Margin="2,0" 
+                                    Opacity="0.6"
+                                    RenderTransformOrigin="0.5,1">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="1"/>
+                                </Border.RenderTransform>
+                            </Border>
+                            
+                            <Border x:Name="VisualizerBar4" 
+                                    Width="3" Height="30" 
+                                    Background="#4ecca3" 
+                                    CornerRadius="2" 
+                                    Margin="2,0" 
+                                    Opacity="0.9"
+                                    RenderTransformOrigin="0.5,1">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="1"/>
+                                </Border.RenderTransform>
+                            </Border>
+                            
+                            <Border x:Name="VisualizerBar5" 
+                                    Width="3" Height="18" 
+                                    Background="#4ecca3" 
+                                    CornerRadius="2" 
+                                    Margin="2,0" 
+                                    Opacity="0.5"
+                                    RenderTransformOrigin="0.5,1">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleY="1"/>
+                                </Border.RenderTransform>
+                            </Border>
                         </StackPanel>
                     </Grid>
                 </Grid>

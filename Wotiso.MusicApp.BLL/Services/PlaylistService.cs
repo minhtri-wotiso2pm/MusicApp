@@ -7,19 +7,28 @@ namespace Wotiso.MusicApp.BLL.Services
 {
     public class PlaylistService
     {
-        private readonly PlaylistRepo _playlistRepo;
+        private readonly JsonPlaylistRepository _playlistRepo;
 
-        public PlaylistService(PlaylistRepo playlistRepo)
+        public PlaylistService(JsonPlaylistRepository playlistRepo)
         {
             _playlistRepo = playlistRepo;
         }
 
-        public List<Playlist> GetPlaylistsForUser(int userId)
+        // Lấy tất cả playlist (không phân biệt user)
+        public List<Playlist> GetAllPlaylists()
         {
-            return _playlistRepo.GetPlaylistsByUserId(userId);
+            return _playlistRepo.GetAllPlaylists();
         }
 
-        public Playlist CreateNewPlaylist(int userId, string playlistName)
+        // DEPRECATED: Giữ lại để backward compatible nhưng gọi GetAllPlaylists()
+        [Obsolete("Use GetAllPlaylists() instead. UserId is no longer needed.")]
+        public List<Playlist> GetPlaylistsForUser(int userId)
+        {
+            return GetAllPlaylists();
+        }
+
+        // Tạo playlist mới (không cần userId)
+        public Playlist CreateNewPlaylist(string playlistName)
         {
             if (string.IsNullOrWhiteSpace(playlistName))
             {
@@ -28,12 +37,19 @@ namespace Wotiso.MusicApp.BLL.Services
 
             var newPlaylist = new Playlist
             {
-                UserId = userId,
+                UserId = null, // Set null vì không có user
                 PlaylistName = playlistName,
                 CreatedAt = DateTime.Now
             };
 
             return _playlistRepo.CreatePlaylist(newPlaylist);
+        }
+
+        // DEPRECATED: Giữ lại để backward compatible
+        [Obsolete("Use CreateNewPlaylist(string) instead. UserId is no longer needed.")]
+        public Playlist CreateNewPlaylist(int userId, string playlistName)
+        {
+            return CreateNewPlaylist(playlistName);
         }
 
         public void DeletePlaylist(int playlistId)

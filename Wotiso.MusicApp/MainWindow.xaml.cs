@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media.Animation;
 using Wotiso.MusicApp.BLL.Services;
 using Wotiso.MusicApp.DAL.Entities;
 
@@ -16,14 +17,13 @@ namespace Wotiso.MusicApp
 {
     public partial class MainWindow : Window
     {
-        // SỬA: Quản lý services và user
+        // Quản lý services (không cần User nữa vì không có login)
         private readonly MusicService _musicService;
         private readonly PlaylistService _playlistService;
-        private readonly User _currentUser;
 
-        // SỬA: _songs giờ là danh sách đang hiển thị
+        // _songs giờ là danh sách đang hiển thị
         private List<Song> _songs = new();
-        private List<Playlist> _playlists = new(); // Danh sách playlist của user
+        private List<Playlist> _playlists = new(); // Danh sách playlist
 
         private int _currentIndex = -1;
         private DispatcherTimer _timer;
@@ -37,6 +37,9 @@ namespace Wotiso.MusicApp
         // NEW: Biến lưu trữ danh sách gốc để filter
         private List<Song> _allSongsInCurrentView = new(); // Tất cả bài hát trong view hiện tại (trước khi filter)
         private List<Playlist> _allPlaylists = new(); // Tất cả playlist (trước khi filter)
+
+        // ==================== ANIMATION VARIABLES ====================
+        private Storyboard _visualizerStoryboard;
 
         // ==================== LOGGING CHO DEBUG ====================
         /// <summary>
@@ -58,25 +61,23 @@ namespace Wotiso.MusicApp
 
         // ==================== CONSTRUCTOR ====================
         /// <summary>
-        /// Constructor nhận 3 tham số từ LoginWindow sau khi đăng nhập thành công
+        /// Constructor nhận 2 tham số: MusicService và PlaylistService
+        /// Không cần User object nữa vì app chạy local không cần authentication
         /// QUAN TRỌNG: Mọi initialization phải được wrap trong try-catch để tránh crash
         /// </summary>
-        /// <param name="loggedInUser">User vừa đăng nhập</param>
         /// <param name="musicService">Service quản lý bài hát</param>
         /// <param name="playlistService">Service quản lý playlist</param>
-        public MainWindow(User loggedInUser, MusicService musicService, PlaylistService playlistService)
+        public MainWindow(MusicService musicService, PlaylistService playlistService)
         {
             try
             {
                 LogDebug("===== MainWindow Constructor START =====");
-                LogDebug($"User: {loggedInUser?.UserName ?? "NULL"}");
                 
                 LogDebug("Step 1: InitializeComponent...");
                 InitializeComponent();
                 LogDebug("Step 1: InitializeComponent DONE");
 
                 LogDebug("Step 2: Set services...");
-                _currentUser = loggedInUser;
                 _musicService = musicService;
                 _playlistService = playlistService;
                 LogDebug("Step 2: Services set DONE");
@@ -109,6 +110,10 @@ namespace Wotiso.MusicApp
                 UpdateEmptyState();
                 LogDebug("Step 8: UpdateEmptyState DONE");
 
+                LogDebug("Step 9: Initialize Animations...");
+                InitializeAnimations();
+                LogDebug("Step 9: Animations initialized DONE");
+
                 LogDebug("===== MainWindow Constructor COMPLETED SUCCESSFULLY =====");
             }
             catch (Exception ex)
@@ -125,9 +130,9 @@ namespace Wotiso.MusicApp
 
         // ==================== LOAD PLAYLISTS ====================
         /// <summary>
-        /// Tải tất cả playlist của user từ database
+        /// Tải tất cả playlist từ database (không phân biệt user vì app chạy local)
         /// - Thêm item "Tất cả bài hát (Thư viện)" với PlaylistId = -1 làm mặc định
-        /// - Load tất cả playlist của user vào ListBox bên trái
+        /// - Load tất cả playlist vào ListBox bên trái
         /// - Cập nhật context menu "Thêm vào playlist"
         /// - LƯU TẤT CẢ PLAYLIST để dùng cho search filter
         /// </summary>
@@ -136,10 +141,10 @@ namespace Wotiso.MusicApp
             try
             {
                 LogDebug("LoadUserPlaylists: Getting playlists from service...");
-                _playlists = _playlistService.GetPlaylistsForUser(_currentUser.UserId);
+                _playlists = _playlistService.GetAllPlaylists(); // Lấy tất cả playlist (không cần UserId)
                 LogDebug($"LoadUserPlaylists: Got {_playlists.Count} playlists");
 
-                // NEW: Lưu tất cả playlist để filter
+                // Lưu tất cả playlist để filter
                 _allPlaylists = new List<Playlist>();
                 _allPlaylists.Add(new Playlist { PlaylistId = -1, PlaylistName = "Tất cả bài hát (Thư viện)" });
                 _allPlaylists.AddRange(_playlists);
@@ -151,7 +156,7 @@ namespace Wotiso.MusicApp
                 LogDebug("LoadUserPlaylists: Adding default library item...");
                 PlaylistList.Items.Add(new Playlist { PlaylistId = -1, PlaylistName = "Tất cả bài hát (Thư viện)" });
 
-                LogDebug("LoadUserPlaylists: Adding user playlists...");
+                LogDebug("LoadUserPlaylists: Adding playlists...");
                 foreach (var pl in _playlists)
                 {
                     PlaylistList.Items.Add(pl);
@@ -294,7 +299,7 @@ namespace Wotiso.MusicApp
 
                 try
                 {
-                    _playlistService.CreateNewPlaylist(_currentUser.UserId, name);
+                    _playlistService.CreateNewPlaylist(name); // Không cần UserId
                     LoadUserPlaylists(); // Tải lại danh sách
                     MessageBox.Show($"Đã tạo playlist '{name}' thành công!", "Thành công", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -629,6 +634,7 @@ namespace Wotiso.MusicApp
                     mediaPlayer.Play();
                     _isPaused = false;
                     _timer?.Start();
+                    ResumeAnimations(); // Resume animations
                 }
                 else
                 {
@@ -653,6 +659,7 @@ namespace Wotiso.MusicApp
                 mediaPlayer.Pause();
                 _isPaused = true;
                 _timer?.Stop();
+                StopAnimations(); // Stop animations
             }
             UpdatePlayPauseButtons();
         }
@@ -713,9 +720,10 @@ namespace Wotiso.MusicApp
                     return;
                 }
 
+                // Stop animations before changing song
+                StopAnimations();
+
                 // ========== BƯỚC 1: STOP VÀ CLEAR HOÀN TOÀN ==========
-                // Phải stop và clear source trước khi load bài mới
-                // Tránh conflict giữa bài cũ và bài mới
                 LogDebug("PlaySong: Stopping current media...");
                 mediaPlayer.Stop();
                 mediaPlayer.Source = null;
@@ -723,25 +731,20 @@ namespace Wotiso.MusicApp
                 
                 // ========== BƯỚC 2: UPDATE UI VỚI CURSOR WAIT ==========
                 LogDebug("PlaySong: Updating UI for loading state...");
-                this.Cursor = Cursors.Wait; // Báo hiệu đang load
-                UpdateNowPlaying(song);      // Hiển thị tên bài đang load
+                this.Cursor = Cursors.Wait;
+                UpdateNowPlaying(song);
                 
                 // ========== BƯỚC 3: FORCE UI RENDER TRƯỚC KHI LOAD MEDIA ==========
-                // QUAN TRỌNG: Phải cho UI render xong TRƯỚC KHI load file nhạc
-                // Nếu không, MediaElement sẽ block UI thread -> màn hình đen
                 await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                await Task.Delay(50); // Delay 50ms để đảm bảo UI thực sự vẽ xong
+                await Task.Delay(50);
                 
                 // ========== BƯỚC 4: SET SOURCE VÀ CHO BUFFER ==========
-                // Set source nhưng CHƯA play ngay để MediaElement có time buffer
                 LogDebug($"PlaySong: Setting media source to {song.FilePath}");
                 mediaPlayer.Source = new Uri(song.FilePath);
                 
-                // Delay 100ms để MediaElement buffer một chút
                 await Task.Delay(100);
                 
                 // ========== BƯỚC 5: PLAY VÀ RESTORE CURSOR ==========
-                // Bây giờ mới play - MediaOpened event sẽ xử lý phần còn lại
                 LogDebug("PlaySong: Calling Play()");
                 mediaPlayer.Play();
                 
@@ -749,6 +752,9 @@ namespace Wotiso.MusicApp
                 
                 // Restore cursor
                 this.Cursor = Cursors.Arrow;
+                
+                // Start animations
+                StartAnimations();
                 
                 UpdatePlayPauseButtons();
                 LogDebug("PlaySong: Completed successfully");
@@ -758,6 +764,7 @@ namespace Wotiso.MusicApp
                 LogDebug($"PlaySong ERROR: {ex.Message}");
                 this.Cursor = Cursors.Arrow;
                 _timer?.Stop();
+                StopAnimations();
                 MessageBox.Show($"Không thể phát bài hát:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -902,7 +909,8 @@ namespace Wotiso.MusicApp
 
         private void UpdateNowPlaying(Song song)
         {
-            if (NowPlayingLabel != null) NowPlayingLabel.Text = song.Title;
+            // NowPlayingLabel đã bị xóa - không cần update nữa
+            LogDebug($"Now playing: {song.Title}");
         }
 
         private void UpdatePlayPauseButtons()
@@ -922,11 +930,132 @@ namespace Wotiso.MusicApp
             }
         }
 
+        // ==================== INITIALIZE ANIMATIONS ====================
+        /// <summary>
+        /// Khởi tạo các animation cho đĩa nhạc và visualizer
+        /// </summary>
+        private void InitializeAnimations()
+        {
+            try
+            {
+                // ===== VISUALIZER NHẤP NHÔ =====
+                _visualizerStoryboard = new Storyboard();
+                
+                // Animation cho từng thanh
+                CreateVisualizerBarAnimation("VisualizerBar1", 0.4, 0.3);
+                CreateVisualizerBarAnimation("VisualizerBar2", 0.8, 0.5);
+                CreateVisualizerBarAnimation("VisualizerBar3", 0.6, 0.4);
+                CreateVisualizerBarAnimation("VisualizerBar4", 1.0, 0.6);
+                CreateVisualizerBarAnimation("VisualizerBar5", 0.5, 0.35);
+
+                LogDebug("Animations initialized successfully");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in InitializeAnimations: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Tạo animation cho một thanh visualizer
+        /// </summary>
+        private void CreateVisualizerBarAnimation(string barName, double maxScale, double duration)
+        {
+            try
+            {
+                var bar = this.FindName(barName) as Border;
+                if (bar == null) return;
+
+                // Animation scale Y (cao xuống thấp)
+                var scaleAnimation = new DoubleAnimation
+                {
+                    From = 0.3,
+                    To = maxScale,
+                    Duration = TimeSpan.FromSeconds(duration),
+                    AutoReverse = true,
+                    RepeatBehavior = RepeatBehavior.Forever
+                };
+
+                // Animation opacity (tăng giảm độ sáng)
+                var opacityAnimation = new DoubleAnimation
+                {
+                    From = 0.4,
+                    To = 1.0,
+                    Duration = TimeSpan.FromSeconds(duration),
+                    AutoReverse = true,
+                    RepeatBehavior = RepeatBehavior.Forever
+                };
+
+                Storyboard.SetTarget(scaleAnimation, bar);
+                Storyboard.SetTargetProperty(scaleAnimation, new PropertyPath("RenderTransform.ScaleY"));
+                
+                Storyboard.SetTarget(opacityAnimation, bar);
+                Storyboard.SetTargetProperty(opacityAnimation, new PropertyPath("Opacity"));
+
+                _visualizerStoryboard.Children.Add(scaleAnimation);
+                _visualizerStoryboard.Children.Add(opacityAnimation);
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR creating visualizer animation for {barName}: {ex.Message}");
+            }
+        }
+
+        // ==================== START/STOP ANIMATIONS ====================
+        /// <summary>
+        /// Bắt đầu tất cả animations khi phát nhạc
+        /// </summary>
+        private void StartAnimations()
+        {
+            try
+            {
+                _visualizerStoryboard?.Begin();
+                LogDebug("Animations started");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in StartAnimations: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Dừng tất cả animations khi tạm dừng nhạc
+        /// </summary>
+        private void StopAnimations()
+        {
+            try
+            {
+                _visualizerStoryboard?.Pause();
+                LogDebug("Animations paused");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in StopAnimations: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Tiếp tục animations khi resume nhạc
+        /// </summary>
+        private void ResumeAnimations()
+        {
+            try
+            {
+                _visualizerStoryboard?.Resume();
+                LogDebug("Animations resumed");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in ResumeAnimations: {ex.Message}");
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
             _timer?.Stop();
             mediaPlayer?.Stop();
+            StopAnimations(); // Stop animations when closing
         }
 
         private void MaximizeRestore_Click(object sender, RoutedEventArgs e)

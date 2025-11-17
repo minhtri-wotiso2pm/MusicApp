@@ -9,9 +9,9 @@ namespace Wotiso.MusicApp.BLL.Services
 {
     public class MusicService
     {
-        private readonly SongRepository _repo;
+        private readonly JsonSongRepository _repo;
 
-        public MusicService(SongRepository repo)
+        public MusicService(JsonSongRepository repo)
         {
             _repo = repo;
         }
@@ -20,7 +20,7 @@ namespace Wotiso.MusicApp.BLL.Services
 
         public List<Song> GetFavoriteSongs() => _repo.GetFavorites();
 
-        // Efficiently load multiple files and persist them in one SaveChanges call
+        // Efficiently load multiple files and persist them in one Save call
         public List<Song> LoadLocalSongsFromFiles(List<string> files)
         {
             var newSongs = new List<Song>();
@@ -72,35 +72,6 @@ namespace Wotiso.MusicApp.BLL.Services
             if (song == null) return;
             song.IsFavorite = false;
             _repo.Update(song);
-        }
-
-        // Ghi lịch sử download
-        public void LogDownload(Song song)
-        {
-            if (song == null) return;
-
-            try
-            {
-                var history = new DownloadHistory
-                {
-                    SongId = song.SongId,
-                    UserId = 1, // user mặc định - consider replacing with real user later
-                    DownloadedAt = DateTime.Now
-                };
-                _repo.AddDownloadHistory(history);
-            }
-            catch
-            {
-                // ignore to avoid crash if DB unavailable
-            }
-        }
-
-        // Reorder songs is UI-level behavior in this version; persisting order requires playlist model.
-        public void ReorderSongs(List<Song> newOrder)
-        {
-            // Keep in-memory only. Persisting requires playlist/order model and repository support.
-            // UI should replace its collection with newOrder.
-            // Intentionally left as no-DB operation.
         }
     }
 }

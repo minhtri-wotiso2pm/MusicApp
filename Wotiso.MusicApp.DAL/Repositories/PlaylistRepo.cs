@@ -14,13 +14,18 @@ namespace Wotiso.MusicApp.DAL.Repositories
             _context = context;
         }
 
-        // Lấy tất cả playlist của 1 user
-        public List<Playlist> GetPlaylistsByUserId(int userId)
+        // Lấy tất cả playlist (không phân biệt user)
+        public List<Playlist> GetAllPlaylists()
         {
             return _context.Playlists
-                .Where(p => p.UserId == userId)
                 .AsNoTracking()
                 .ToList();
+        }
+
+        // DEPRECATED: Giữ lại để backward compatible
+        public List<Playlist> GetPlaylistsByUserId(int userId)
+        {
+            return GetAllPlaylists(); // Trả về tất cả playlist
         }
 
         // Tạo playlist mới

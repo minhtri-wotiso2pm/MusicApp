@@ -7,6 +7,9 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Wotiso.MusicApp.BLL.Services;
+using Wotiso.MusicApp.DAL.Storage;
+using Wotiso.MusicApp.DAL.Repositories;
 
 namespace Wotiso.MusicApp
 {
@@ -17,19 +20,16 @@ namespace Wotiso.MusicApp
     /// NHIỆM VỤ CHÍNH:
     /// 1. Catch tất cả exceptions chưa được xử lý (Unhandled Exceptions)
     /// 2. Log mọi hoạt động của app để debug
-    /// 3. Khởi tạo và hiển thị LoginWindow
+    /// 3. Khởi tạo JSON Storage, Services và MainWindow
     /// 4. Ngăn app crash khi có lỗi bất ngờ
     /// 
-    /// QUAN TRỌNG: 
-    /// - Không được để exception nào thoát ra ngoài mà không được log
-    /// - Phải có exception handling ở đây vì đây là tầng cao nhất
+    /// THAY ĐỔI MỚI: Sử dụng JSON storage thay vì SQLite database
     /// </summary>
     public partial class App : System.Windows.Application
     {
         // ==================== LOGGING ====================
         /// <summary>
         /// Ghi log cho toàn bộ application
-        /// Tương tự LogDebug trong MainWindow nhưng prefix là [App]
         /// </summary>
         private void LogDebug(string message)
         {
@@ -65,7 +65,7 @@ namespace Wotiso.MusicApp
             // Ví dụ: Lỗi trong Task.Run(), Thread.Start(), etc.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             
-            LogDebug("====== APPLICATION STARTED ======");
+            LogDebug("====== APPLICATION STARTED (JSON MODE) ======");
         }
 
         // ==================== UI THREAD EXCEPTION HANDLER ====================
@@ -125,43 +125,49 @@ namespace Wotiso.MusicApp
 
         // ==================== APP STARTUP ====================
         /// <summary>
-        /// OnStartup - Method chạy SAU constructor, là nơi khởi tạo window đầu tiên
+        /// OnStartup - Khởi tạo JSON Storage và Services
         /// 
-        /// QUY TRÌNH:
-        /// 1. Gọi base.OnStartup() - bắt buộc phải có
-        /// 2. Tạo LoginWindow
-        /// 3. Hiển thị LoginWindow bằng Show()
-        /// 
-        /// TẠI SAO KHÔNG DÙNG StartupUri trong App.xaml:
-        /// - Vì cần truyền parameters vào MainWindow
-        /// - Cần LoginWindow chạy trước
-        /// - Cần log từng bước để debug
-        /// 
-        /// LƯU Ý: 
-        /// - Phải wrap trong try-catch vì đây là điểm khởi đầu
-        /// - Nếu lỗi ở đây, app sẽ không khởi động được
+        /// THAY ĐỔI MỚI:
+        /// - Sử dụng JsonDataStore thay vì MusicPlayerDbContext
+        /// - Dữ liệu lưu trong file JSON tại: %APPDATA%/MusicApp/musicapp_data.json
+        /// - Portable, dễ backup, không cần SQLite
         /// </summary>
         protected override void OnStartup(StartupEventArgs e)
         {
             try
             {
-                LogDebug("===== OnStartup START =====");
+                LogDebug("===== OnStartup START (JSON MODE) =====");
                 
-                // Gọi OnStartup của class cha (Application)
-                // Bắt buộc phải có, nếu không app sẽ không chạy đúng
+                // Gọi OnStartup của class cha
                 base.OnStartup(e);
                 LogDebug("base.OnStartup() completed");
 
-                // Tạo LoginWindow - window đầu tiên user nhìn thấy
-                LogDebug("Creating LoginWindow...");
-                var loginWindow = new Views.LoginWindow();
-                LogDebug("LoginWindow created successfully");
+                // ===== THAY ĐỔI MỚI: Sử dụng JSON Storage =====
+                LogDebug("Creating JSON DataStore...");
+                var jsonStore = new JsonDataStore();
+                LogDebug($"JSON DataStore created successfully");
+
+                // Khởi tạo JSON-based Repositories
+                LogDebug("Creating JSON Repositories...");
+                var songRepo = new JsonSongRepository(jsonStore);
+                var playlistRepo = new JsonPlaylistRepository(jsonStore);
+                LogDebug("JSON Repositories created successfully");
                 
-                // Show LoginWindow - bắt đầu UI flow
-                // Sau khi login thành công, LoginWindow sẽ tạo MainWindow
-                LogDebug("Showing LoginWindow...");
-                loginWindow.Show();
-                LogDebug("LoginWindow shown successfully");
+                // Khởi tạo Services
+                LogDebug("Creating Services...");
+                var musicService = new MusicService(songRepo);
+                var playlistService = new PlaylistService(playlistRepo);
+                LogDebug("Services created successfully");
+
+                // Tạo MainWindow
+                LogDebug("Creating MainWindow...");
+                var mainWindow = new MainWindow(musicService, playlistService);
+                LogDebug("MainWindow created successfully");
+                
+                // Show MainWindow
+                LogDebug("Showing MainWindow...");
+                mainWindow.Show();
+                LogDebug("MainWindow shown successfully");
                 
                 LogDebug("===== OnStartup COMPLETED =====");
             }
@@ -175,8 +181,8 @@ namespace Wotiso.MusicApp
                 MessageBox.Show($"ERROR in App.OnStartup:\n\n{ex.Message}\n\nStack Trace:\n{ex.StackTrace}",
                     "Startup Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 
-                // Throw lại exception để app không chạy tiếp (vì đã lỗi từ đầu)
-                throw;
+                // Shutdown app nếu không khởi tạo được
+                Application.Current.Shutdown();
             }
         }
 
@@ -194,7 +200,7 @@ namespace Wotiso.MusicApp
         /// </summary>
         protected override void OnExit(ExitEventArgs e)
         {
-            LogDebug("====== APPLICATION EXITING ======");
+            LogDebug("====== APPLICATION EXITING (JSON MODE) ======");
             base.OnExit(e);
         }
     }
