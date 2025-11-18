@@ -134,7 +134,7 @@ namespace Wotiso.MusicApp
         /// - Thêm item "Tất cả bài hát (Thư viện)" với PlaylistId = -1 làm mặc định
         /// - Load tất cả playlist vào ListBox bên trái
         /// - Cập nhật context menu "Thêm vào playlist"
-        /// - LƯU TẤT CẢ PLAYLIST để dùng cho search filter
+        /// - LƯU TẤT CẢ PLAYLIST ĐỂ DÙNG CHO SEARCH FILTER
         /// </summary>
         private void LoadUserPlaylists()
         {
@@ -775,6 +775,10 @@ namespace Wotiso.MusicApp
             if (SongList.SelectedIndex >= 0 && SongList.SelectedIndex < _songs.Count)
             {
                 _currentIndex = SongList.SelectedIndex;
+                // Cập nhật tên bài hát ở phần Now Playing khi chọn
+                var selectedSong = _songs[_currentIndex];
+                UpdateNowPlaying(selectedSong);
+                LoadSongInfo(selectedSong);
             }
         }
 

@@ -1,11 +1,110 @@
 {
   "Songs": [
     {
-      "SongId": 5,
-      "Title": "Pin D\u1EF1 Ph\u00F2ng",
-      "FilePath": "D:\\FPT\\FA25\\PRN212\\Pin D\u1EF1 Ph\u00F2ng.mp3",
+      "SongId": 7,
+      "Title": "Chung Ta Cua Tuong Lai - Son Tung M-TP - NhacHayVN",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Chung Ta Cua Tuong Lai - Son Tung M-TP - NhacHayVN.mp3",
       "FileType": ".mp3",
-      "CreatedAt": "2025-11-18T07:43:32.2147299+07:00",
+      "CreatedAt": "2025-11-18T08:35:55.3867365+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 8,
+      "Title": "Em Cua Ngay Hom Qua - Son Tung M-TP - NhacHayVN",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Em Cua Ngay Hom Qua - Son Tung M-TP - NhacHayVN.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867379+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 9,
+      "Title": "Exit Sign (1)",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Exit Sign (1).mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867381+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 10,
+      "Title": "Exit Sign",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Exit Sign.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867383+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 11,
+      "Title": "Lac Troi - Son Tung M-TP - NhacHayVN",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Lac Troi - Son Tung M-TP - NhacHayVN.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867384+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 12,
+      "Title": "Mot Buoc Yeu Van Dam Dau - Mr. Siro - NhacHayVN",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Mot Buoc Yeu Van Dam Dau - Mr. Siro - NhacHayVN.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867392+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 13,
+      "Title": "Ng\u1EE7 M\u1ED9t M\u00ECnh (t\u00ECnh r\u1EA5t t\u00ECnh)",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Ng\u1EE7 M\u1ED9t M\u00ECnh (t\u00ECnh r\u1EA5t t\u00ECnh).mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867394+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 14,
+      "Title": "N\u01B0\u1EDBc M\u1EAFt C\u00E1 S\u1EA5u",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\N\u01B0\u1EDBc M\u1EAFt C\u00E1 S\u1EA5u.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867395+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 15,
+      "Title": "Thien Ly Oi - Jack - J97 - NhacHayVN",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\Thien Ly Oi - Jack - J97 - NhacHayVN.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867396+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    },
+    {
+      "SongId": 16,
+      "Title": "TR\u00CCNH",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Song\\TR\u00CCNH.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T08:35:55.3867399+07:00",
       "DownloadHistories": [],
       "PlaylistSongs": [],
       "Users": [],
@@ -14,18 +113,12 @@
   ],
   "Playlists": [
     {
-      "PlaylistId": 1,
-      "PlaylistName": "hh",
-      "CreatedAt": "2025-11-18T03:02:27.3337832+07:00",
-      "SongIds": []
-    },
-    {
-      "PlaylistId": 2,
-      "PlaylistName": "kkkkkk",
-      "CreatedAt": "2025-11-18T07:45:16.3614224+07:00",
+      "PlaylistId": 3,
+      "PlaylistName": "gi\u00E1o l\u00E0ng y\u00EAu d\u1EA5u",
+      "CreatedAt": "2025-11-18T08:35:26.5358935+07:00",
       "SongIds": []
     }
   ],
-  "NextSongId": 7,
-  "NextPlaylistId": 3
+  "NextSongId": 17,
+  "NextPlaylistId": 4
 }
