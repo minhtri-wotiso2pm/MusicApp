@@ -1,13 +1,31 @@
 {
-  "Songs": [],
+  "Songs": [
+    {
+      "SongId": 5,
+      "Title": "Pin D\u1EF1 Ph\u00F2ng",
+      "FilePath": "D:\\FPT\\FA25\\PRN212\\Pin D\u1EF1 Ph\u00F2ng.mp3",
+      "FileType": ".mp3",
+      "CreatedAt": "2025-11-18T07:43:32.2147299+07:00",
+      "DownloadHistories": [],
+      "PlaylistSongs": [],
+      "Users": [],
+      "IsFavorite": false
+    }
+  ],
   "Playlists": [
     {
       "PlaylistId": 1,
       "PlaylistName": "hh",
       "CreatedAt": "2025-11-18T03:02:27.3337832+07:00",
       "SongIds": []
+    },
+    {
+      "PlaylistId": 2,
+      "PlaylistName": "kkkkkk",
+      "CreatedAt": "2025-11-18T07:45:16.3614224+07:00",
+      "SongIds": []
     }
   ],
-  "NextSongId": 5,
-  "NextPlaylistId": 2
+  "NextSongId": 7,
+  "NextPlaylistId": 3
 }

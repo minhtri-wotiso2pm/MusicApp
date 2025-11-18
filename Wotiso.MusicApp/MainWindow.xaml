@@ -6,7 +6,8 @@
         ResizeMode="CanResize"
         WindowStyle="SingleBorderWindow"
         WindowStartupLocation="CenterScreen"
-        Loaded="Window_Loaded">
+        Loaded="Window_Loaded"
+        Icon="/unnamed.ico">
 
     <Window.Resources>
         <DropShadowEffect x:Key="CardShadow" 
@@ -576,28 +577,28 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        
+
                                                         <!-- Mini Album Disc - Rotating -->
                                                         <Grid Grid.Column="0" Width="35" Height="35" Margin="0,0,12,0">
                                                             <!-- Disc Background -->
                                                             <Ellipse Fill="#1a1a2e" Stroke="#4ecca3" StrokeThickness="1.5"/>
-                                                            
+
                                                             <!-- Disc with Rotation -->
                                                             <Ellipse Fill="#e94560" Opacity="0.3" Margin="7">
                                                                 <Ellipse.RenderTransform>
                                                                     <RotateTransform x:Name="MiniDiscRotation" CenterX="10.5" CenterY="10.5" Angle="0"/>
                                                                 </Ellipse.RenderTransform>
                                                             </Ellipse>
-                                                            
+
                                                             <!-- Center Hole -->
                                                             <Ellipse Fill="#0d0d1a" Width="8" Height="8"/>
-                                                
+
                                                             <!-- Music Note Icon -->
                                                             <TextBlock Text="♪" FontSize="14" Foreground="#4ecca3" 
                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                       FontWeight="Bold"/>
                                                         </Grid>
-                                                        
+
                                                         <ContentPresenter Grid.Column="1" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </Border>
@@ -783,8 +784,8 @@
                         <!-- Visualizer - Animated Bars -->
                         <StackPanel Orientation="Horizontal" 
                                     Grid.Column="2"
-                                   HorizontalAlignment="Right"
-                                   VerticalAlignment="Center">
+                                   HorizontalAlignment="Left"
+                                   VerticalAlignment="Bottom" Margin="306,0,0,13">
                             <Border x:Name="VisualizerBar1" 
                                     Width="3" Height="18" 
                                     Background="#4ecca3" 
@@ -796,7 +797,7 @@
                                     <ScaleTransform ScaleY="1"/>
                                 </Border.RenderTransform>
                             </Border>
-                            
+
                             <Border x:Name="VisualizerBar2" 
                                     Width="3" Height="26" 
                                     Background="#4ecca3" 
@@ -808,7 +809,7 @@
                                     <ScaleTransform ScaleY="1"/>
                                 </Border.RenderTransform>
                             </Border>
-                            
+
                             <Border x:Name="VisualizerBar3" 
                                     Width="3" Height="22" 
                                     Background="#4ecca3" 
@@ -820,7 +821,7 @@
                                     <ScaleTransform ScaleY="1"/>
                                 </Border.RenderTransform>
                             </Border>
-                            
+
                             <Border x:Name="VisualizerBar4" 
                                     Width="3" Height="30" 
                                     Background="#4ecca3" 
@@ -832,7 +833,7 @@
                                     <ScaleTransform ScaleY="1"/>
                                 </Border.RenderTransform>
                             </Border>
-                            
+
                             <Border x:Name="VisualizerBar5" 
                                     Width="3" Height="18" 
                                     Background="#4ecca3" 

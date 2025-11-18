@@ -7,7 +7,8 @@
         WindowStyle="None"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        Background="#16213e">
+        Background="#16213e"
+        Icon="/unnamed.ico">
 
     <Window.Resources>
         <Style x:Key="DialogButton" TargetType="Button">
@@ -47,7 +48,7 @@
     <Border CornerRadius="12" 
             Background="#16213e"
             BorderBrush="#e94560"
-            BorderThickness="2">
+            BorderThickness="2" Margin="0,0,0,-22">
         <Grid Margin="25">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -93,7 +94,7 @@
             <StackPanel Grid.Row="3" 
                         Orientation="Horizontal" 
                         HorizontalAlignment="Right">
-                <Button Content="H?y" 
+                <Button Content="Cancel" 
                         Width="100"
                         Click="Cancel_Click"
                         Style="{StaticResource CancelButton}"

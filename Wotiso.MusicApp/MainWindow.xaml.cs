@@ -958,6 +958,12 @@ namespace Wotiso.MusicApp
             CurrentTimeLabel.Text = "0:00";
             TotalTimeLabel.Text = "0:00";
             ProgressSlider.Value = 0;
+            
+            // Reset tên bài hát
+            if (NowPlayingTitle != null)
+            {
+                NowPlayingTitle.Text = "♫ Chọn bài hát để phát";
+            }
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -991,7 +997,11 @@ namespace Wotiso.MusicApp
 
         private void UpdateNowPlaying(Song song)
         {
-            // NowPlayingLabel đã bị xóa - không cần update nữa
+            // Update tên bài hát đang phát
+            if (NowPlayingTitle != null)
+            {
+                NowPlayingTitle.Text = $"♫ {song.Title}";
+            }
             LogDebug($"Now playing: {song.Title}");
         }
 
