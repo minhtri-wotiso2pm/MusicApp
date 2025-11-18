@@ -183,26 +183,32 @@ namespace Wotiso.MusicApp
 
         // ==================== LOAD LIBRARY (TẤT CẢ BÀI HÁT) ====================
         /// <summary>
-        /// Tải TẤT CẢ bài hát từ database (không phân biệt playlist)
-        /// Đây là view mặc định khi mở app hoặc khi click "Tất cả bài hát (Thư viện)"
-        /// - Set _currentViewingPlaylist = null để biết đang xem Library
-        /// - Load bài đầu tiên vào player (không auto play)
-        /// - LƯU TẤT CẢ BÀI HÁT để dùng cho search filter
+        /// Tải TẤT CẢ bài hát từ JSON storage
+        /// OPTIMIZED: Sử dụng async/await để không block UI
+        /// CHANGED: Đổi từ async void sang async Task để có thể await
         /// </summary>
-        private void LoadLibrarySongs()
+        private async Task LoadLibrarySongsAsync()
         {
             try
             {
                 LogDebug("LoadLibrarySongs: Getting all songs from service...");
-                _songs = _musicService.GetAllSongs();
-                _allSongsInCurrentView = new List<Song>(_songs); // NEW: Lưu để filter
+                
+                // ===== LOAD DATA TRONG BACKGROUND =====
+                var songs = await Task.Run(() => _musicService.GetAllSongs());
+                
+                _songs = songs;
+                _allSongsInCurrentView = new List<Song>(_songs);
                 LogDebug($"LoadLibrarySongs: Got {_songs.Count} songs");
 
                 LogDebug("LoadLibrarySongs: Setting SongList.ItemsSource...");
-                SongList.ItemsSource = _songs;
+                
+                // ===== UPDATE UI TRÊN UI THREAD =====
+                await Dispatcher.InvokeAsync(() => {
+                    SongList.ItemsSource = null; // Clear trước
+                    SongList.ItemsSource = _songs;
+                }, DispatcherPriority.Normal);
 
                 _currentViewingPlaylist = null;
-                LogDebug("LoadLibrarySongs: Updating CurrentListTitle...");
                 CurrentListTitle.Text = "Tất cả bài hát (Thư viện)";
 
                 if (_songs.Count > 0 && _currentIndex == -1)
@@ -227,44 +233,79 @@ namespace Wotiso.MusicApp
             catch (Exception ex)
             {
                 LogDebug($"ERROR in LoadLibrarySongs: {ex.Message}");
-                throw;
+                MessageBox.Show($"Lỗi khi tải danh sách bài hát: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        /// <summary>
+        /// Wrapper cho backward compatibility
+        /// </summary>
+        private async void LoadLibrarySongs()
+        {
+            await LoadLibrarySongsAsync();
         }
 
         // ==================== LOAD PLAYLIST CỤ THỂ ====================
         /// <summary>
-        /// Tải bài hát từ 1 playlist cụ thể (không phải Library)
-        /// - Lưu playlist đang xem vào _currentViewingPlaylist
-        /// - Load danh sách bài hát trong playlist đó
-        /// - Cập nhật title hiển thị tên playlist
-        /// - LƯU TẤT CẢ BÀI HÁT để dùng cho search filter
+        /// Tải bài hát từ 1 playlist cụ thể
+        /// OPTIMIZED: Sử dụng async/await để không block UI
+        /// CHANGED: Đổi từ async void sang async Task để có thể await
         /// </summary>
-        private void LoadSongsFromPlaylist(Playlist playlist)
+        private async Task LoadSongsFromPlaylistAsync(Playlist playlist)
         {
-            _songs = _playlistService.GetSongsForPlaylist(playlist.PlaylistId);
-            _allSongsInCurrentView = new List<Song>(_songs); // NEW: Lưu để filter
-            SongList.ItemsSource = _songs;
-
-            _currentViewingPlaylist = playlist;
-            CurrentListTitle.Text = playlist.PlaylistName;
-
-            if (_songs.Count > 0)
+            try
             {
-                _currentIndex = 0;
-                SongList.SelectedIndex = 0;
-                LoadSongInfo(_songs[_currentIndex]);
-            }
-            else
-            {
-                _currentIndex = -1;
-                ResetTimeDisplay();
-            }
+                LogDebug($"LoadSongsFromPlaylist: Loading playlist {playlist.PlaylistId}...");
+                
+                // ===== LOAD DATA TRONG BACKGROUND =====
+                var songs = await Task.Run(() => _playlistService.GetSongsForPlaylist(playlist.PlaylistId));
+                
+                _songs = songs;
+                _allSongsInCurrentView = new List<Song>(_songs);
+                LogDebug($"LoadSongsFromPlaylist: Got {_songs.Count} songs");
+                
+                // ===== UPDATE UI TRÊN UI THREAD =====
+                await Dispatcher.InvokeAsync(() => {
+                    SongList.ItemsSource = null; // Clear trước
+                    SongList.ItemsSource = _songs;
+                }, DispatcherPriority.Normal);
 
-            UpdateEmptyState();
-            UpdateSongCount();
-            
-            // Clear song search box
-            SongSearchBox.Text = "";
+                _currentViewingPlaylist = playlist;
+                CurrentListTitle.Text = playlist.PlaylistName;
+
+                if (_songs.Count > 0)
+                {
+                    _currentIndex = 0;
+                    SongList.SelectedIndex = 0;
+                    LoadSongInfo(_songs[_currentIndex]);
+                }
+                else
+                {
+                    _currentIndex = -1;
+                    ResetTimeDisplay();
+                }
+
+                UpdateEmptyState();
+                UpdateSongCount();
+                
+                // Clear song search box
+                SongSearchBox.Text = "";
+                
+                LogDebug("LoadSongsFromPlaylist: COMPLETED");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"ERROR in LoadSongsFromPlaylist: {ex.Message}");
+                MessageBox.Show($"Lỗi khi tải playlist: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// Wrapper cho backward compatibility
+        /// </summary>
+        private async void LoadSongsFromPlaylist(Playlist playlist)
+        {
+            await LoadSongsFromPlaylistAsync(playlist);
         }
 
         // MỚI: Xử lý khi bấm chọn một playlist
@@ -502,7 +543,7 @@ namespace Wotiso.MusicApp
                 {
                     LogDebug($"SelectFiles_Click ERROR: {ex.Message}");
                     
-                    // Re-enable UI before showing error
+                    // Re-enable UI trước khi hiển thị lỗi
                     this.IsEnabled = true;
                     this.Cursor = Cursors.Arrow;
                     this.UpdateLayout();
@@ -557,8 +598,12 @@ namespace Wotiso.MusicApp
             }
         }
 
-        // SỬA: Dùng Service
-        private void Delete_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Xử lý xóa bài hát
+        /// ASYNC để tránh block UI khi xóa và reload
+        /// FIX: Await LoadLibrarySongsAsync để đảm bảo UI update xong
+        /// </summary>
+        private async void Delete_Click(object sender, RoutedEventArgs e)
         {
             if (SongList.SelectedItem == null)
             {
@@ -567,22 +612,59 @@ namespace Wotiso.MusicApp
             }
 
             var song = (Song)SongList.SelectedItem;
-            var result = MessageBox.Show($"Bạn có chắc muốn xóa vĩnh viễn bài: {song.Title} khỏi thư viện?\n(Hành động này sẽ xóa file khỏi TẤT CẢ playlist)", "Xác nhận xóa", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(
+                $"Bạn có chắc muốn xóa vĩnh viễn bài: {song.Title} khỏi thư viện?\n(Hành động này sẽ xóa file khỏi TẤT CẢ playlist)", 
+                "Xác nhận xóa", 
+                MessageBoxButton.YesNo, 
+                MessageBoxImage.Question);
 
             if (result == MessageBoxResult.Yes)
             {
-                if (mediaPlayer.Source != null && mediaPlayer.Source.LocalPath == song.FilePath)
+                try
                 {
-                    mediaPlayer.Stop();
-                    _timer?.Stop();
+                    // Stop media player nếu đang phát bài này
+                    if (mediaPlayer.Source != null && mediaPlayer.Source.LocalPath == song.FilePath)
+                    {
+                        mediaPlayer.Stop();
+                        _timer?.Stop();
+                    }
+
+                    // ===== DISABLE UI ĐỂ TRÁNH CLICK LINH TINH =====
+                    this.IsEnabled = false;
+                    this.Cursor = Cursors.Wait;
+                    LogDebug($"Delete_Click: Deleting song {song.SongId}...");
+
+                    // ===== XÓA TRONG BACKGROUND THREAD =====
+                    await Task.Run(() => _musicService.DeleteSong(song.SongId));
+                    LogDebug($"Delete_Click: Song deleted successfully");
+
+                    // ===== FORCE UI REFRESH TRƯỚC KHI RELOAD =====
+                    await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+                    await Task.Delay(50);
+
+                    // ===== RELOAD DATA VÀ AWAIT ĐỂ ĐẢM BẢO UI UPDATE =====
+                    LogDebug("Delete_Click: Reloading songs list...");
+                    if (_currentViewingPlaylist == null)
+                        await LoadLibrarySongsAsync(); // ← AWAIT ở đây!
+                    else
+                        await LoadSongsFromPlaylistAsync(_currentViewingPlaylist); // ← AWAIT ở đây!
+
+                    // ===== RE-ENABLE UI SAU KHI RELOAD XONG =====
+                    this.IsEnabled = true;
+                    this.Cursor = Cursors.Arrow;
+
+                    LogDebug("Delete_Click: Completed successfully");
                 }
-
-                _musicService.DeleteSong(song.SongId);
-
-                if (_currentViewingPlaylist == null)
-                    LoadLibrarySongs();
-                else
-                    LoadSongsFromPlaylist(_currentViewingPlaylist);
+                catch (Exception ex)
+                {
+                    LogDebug($"Delete_Click ERROR: {ex.Message}");
+                    
+                    // Re-enable UI on error
+                    this.IsEnabled = true;
+                    this.Cursor = Cursors.Arrow;
+                    
+                    MessageBox.Show($"Lỗi khi xóa bài hát: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
